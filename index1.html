@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b3d2e" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Blackjack Basic Strategy Trainer</title>
+  <style>
+    :root { --bg:#0b3d2e; --panel:#0e4b38; --text:#eef7f2; --muted:#b9d6c8; --bad:#ff6b6b; --good:#51cf66; }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{margin:0;background:radial-gradient(1200px 600px at 50% -100px, #146a50, var(--bg));color:var(--text);}
+    .wrap{max-width:920px;margin:0 auto;padding:16px;}
+    h1{margin:8px 0 6px;font-size:22px;}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .cardpanel{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:14px}
+    .sectiontitle{font-weight:700;margin:0 0 10px}
+    .hand{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .cardimg{width:92px;height:132px;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,0.25);background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .cardimg img{width:100%;height:100%;object-fit:cover}
+    .cardfallback{font-size:20px;font-weight:800;color:#111;background:#fff;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+    .pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);padding:8px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+    .btnbar{display:flex;gap:10px;flex-wrap:wrap}
+    button{border:0;border-radius:14px;padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer}
+    .btn{background:#f1f5f3;color:#111}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .btn-primary{background:#ffd43b;color:#111}
+    .btn-ghost{background:rgba(255,255,255,0.10);color:var(--text);border:1px solid rgba(255,255,255,0.14)}
+    .feedback{font-size:16px;font-weight:800;margin-top:6px}
+    .good{color:var(--good)}
+    .bad{color:var(--bad)}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:820px){ .grid{grid-template-columns:1.05fr .95fr;} }
+    .sliders label{display:flex;justify-content:space-between;align-items:center;margin:10px 0;color:var(--muted)}
+    input[type="range"]{width:55%}
+    .small{font-size:12px;color:var(--muted);line-height:1.35}
+    .topline{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+    .score{font-weight:900}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topline">
+      <div>
+        <h1>Blackjack Basic Strategy Trainer</h1>
+        <div class="pill">Regler: S17 · 6D · DAS · (ingen surrender)</div>
+      </div>
+      <div class="score" id="score">Score: 0/0 (0.0%)</div>
+    </div>
+
+    <div class="grid" style="margin-top:14px;">
+      <div class="cardpanel">
+        <div class="sectiontitle">Bordet</div>
+
+        <div style="margin-bottom:12px;">
+          <div class="pill" id="meta">Kategori: — · Total: —</div>
+        </div>
+
+        <div class="row">
+          <div style="flex:1;min-width:260px;">
+            <div class="sectiontitle">Dealer (upcard)</div>
+            <div class="hand" id="dealerHand"></div>
+          </div>
+          <div style="flex:2;min-width:260px;">
+            <div class="sectiontitle">Du</div>
+            <div class="hand" id="playerHand"></div>
+          </div>
+        </div>
+
+        <div class="btnbar" style="margin-top:14px;">
+          <button class="btn" id="btnHit">Hit</button>
+          <button class="btn" id="btnStand">Stand</button>
+          <button class="btn" id="btnDouble">Double</button>
+          <button class="btn" id="btnSplit">Split</button>
+          <button class="btn-primary" id="btnNew">Ny hand</button>
+          <button class="btn-ghost" id="btnShow">Visa basic</button>
+        </div>
+
+        <div class="feedback" id="feedback">Välj ett beslut.</div>
+        <div class="small" style="margin-top:10px;">
+          Tips: Appen ger feedback på <b>första beslutet</b> (som du ville). “Ny hand” för nästa scenario.
+        </div>
+      </div>
+
+      <div class="cardpanel">
+        <div class="sectiontitle">Träningsvikter</div>
+        <div class="sliders">
+          <label>Hard <span id="wHardVal">2</span>
+            <input id="wHard" type="range" min="0" max="20" value="2">
+          </label>
+          <label>Soft <span id="wSoftVal">2</span>
+            <input id="wSoft" type="range" min="0" max="20" value="2">
+          </label>
+          <label>Pairs/Splits <span id="wPairVal">2</span>
+            <input id="wPair" type="range" min="0" max="20" value="2">
+          </label>
+        </div>
+
+        <div class="small">
+          Kortbilder läses från <b>/cards</b> med namn som <code>AS.png</code>, <code>10H.png</code>, <code>QD.png</code>.
+          Om en bild saknas visas en enkel textfallback.
+        </div>
+
+        <div class="small" style="margin-top:12px;">
+          Installera på mobilen:
+          <ul>
+            <li><b>iPhone (Safari):</b> Dela → “Lägg till på hemskärmen”</li>
+            <li><b>Android (Chrome):</b> Meny → “Installera app” / “Lägg till på startskärmen”</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   Utils / Cards
+========================= */
+
+const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const SUITS = ["S","H","D","C"]; // Spades, Hearts, Diamonds, Clubs
+const CARD_VALUES = { A:11, "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,J:10,Q:10,K:10 };
+
+function splitRank(r){
+  return (["10","J","Q","K"].includes(r)) ? "10" : r;
+}
+function rankOf(card){ return card.slice(0, -1); } // "10H"->"10"
+function suitOf(card){ return card.slice(-1); }
+
+function handValue(cards){
+  const ranks = cards.map(rankOf);
+  let total = ranks.reduce((s,r)=> s + (r==="A"?11:CARD_VALUES[r]), 0);
+  let aces = ranks.filter(r=>r==="A").length;
+  while(total > 21 && aces > 0){ total -= 10; aces--; }
+  const hardTotal = ranks.reduce((s,r)=> s + (r==="A"?1:CARD_VALUES[r]), 0);
+  const soft = ranks.includes("A") && total !== hardTotal;
+  return { total, soft };
+}
+
+function canSplit(cards){
+  if(cards.length !== 2) return false;
+  return splitRank(rankOf(cards[0])) === splitRank(rankOf(cards[1]));
+}
+
+function randomCard(rank=null){
+  const r = rank ?? RANKS[Math.floor(Math.random()*RANKS.length)];
+  const s = SUITS[Math.floor(Math.random()*SUITS.length)];
+  return `${r}${s}`;
+}
+
+function randomDealerUp(){
+  const r = ["2","3","4","5","6","7","8","9","10","A","J","Q","K"][Math.floor(Math.random()*13)];
+  return randomCard(r);
+}
+
+/* =========================
+   Basic Strategy (S17, 6D, DAS, no surrender)
+   Returns: 'H','S','D','P'
+========================= */
+
+function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
+  const up = splitRank(rankOf(dealerUp));
+
+  // Splits (assumes DAS is allowed)
+  if(canSplitNow && canSplit(playerCards)){
+    const pr = splitRank(rankOf(playerCards[0]));
+    if(pr==="A") return "P";
+    if(pr==="8") return "P";
+    if(pr==="10") return "S";
+    if(pr==="9")  return ["2","3","4","5","6","8","9"].includes(up) ? "P" : "S";
+    if(pr==="7")  return ["2","3","4","5","6","7"].includes(up) ? "P" : "H";
+    if(pr==="6")  return ["2","3","4","5","6"].includes(up) ? "P" : "H";
+    if(pr==="5")  return (canDouble && ["2","3","4","5","6","7","8","9"].includes(up)) ? "D" : "H";
+    if(pr==="4")  return ["5","6"].includes(up) ? "P" : "H";
+    if(pr==="2" || pr==="3") return ["2","3","4","5","6","7"].includes(up) ? "P" : "H";
+  }
+
+  const { total, soft } = handValue(playerCards);
+
+  // Soft totals (S17, DAS)
+  if(soft){
+    if(total <= 17){
+      if(canDouble){
+        if((total===13 || total===14) && ["5","6"].includes(up)) return "D";
+        if((total===15 || total===16) && ["4","5","6"].includes(up)) return "D";
+        if(total===17 && ["3","4","5","6"].includes(up)) return "D";
+      }
+      return "H";
+    }
+
+    if(total === 18){ // A,7
+      // Chart: Double vs 2–6 if allowed, otherwise Stand vs 2. Stand vs 7–8. Hit vs 9–A.
+      if(up === "2") return canDouble ? "D" : "S";           // Ds
+      if(canDouble && ["3","4","5","6"].includes(up)) return "D";
+      if(["2","7","8"].includes(up)) return "S";
+      return "H"; // vs 9,10,A
+    }
+
+    if(total === 19){ // A,8
+      // Chart: Double vs 6 if allowed (Ds), otherwise Stand
+      if(up === "6") return canDouble ? "D" : "S";
+      return "S";
+    }
+
+    return "S"; // 20+
+  }
+
+  // Hard totals (S17, DAS)
+  if(total <= 8) return "H";
+  if(total === 9)  return (canDouble && ["3","4","5","6"].includes(up)) ? "D" : "H";
+  if(total === 10) return (canDouble && ["2","3","4","5","6","7","8","9"].includes(up)) ? "D" : "H";
+  if(total === 11) return canDouble ? "D" : "H"; // double vs any upcard if allowed (incl. A)
+  if(total === 12) return ["4","5","6"].includes(up) ? "S" : "H";
+  if(total >= 13 && total <= 16) return ["2","3","4","5","6"].includes(up) ? "S" : "H";
+  return "S";
+}
+
+
+/* =========================
+   Weighted scenario generator
+========================= */
+
+function genSoftHand(){
+  return [randomCard("A"), randomCard(["2","3","4","5","6","7","8","9"][Math.floor(Math.random()*8)])];
+}
+function genPairHand(){
+  const r = RANKS[Math.floor(Math.random()*RANKS.length)];
+  return [randomCard(r), randomCard(r)];
+}
+function genHardHand(){
+  while(true){
+    const c1 = randomCard(["2","3","4","5","6","7","8","9","10","J","Q","K"][Math.floor(Math.random()*12)]);
+    const c2 = randomCard(["2","3","4","5","6","7","8","9","10","J","Q","K"][Math.floor(Math.random()*12)]);
+    const r1 = splitRank(rankOf(c1)), r2 = splitRank(rankOf(c2));
+    const total = CARD_VALUES[r1] + CARD_VALUES[r2];
+    if(total >= 5 && total <= 20) return [c1,c2];
+  }
+}
+function pickTrainingHand(weights){
+  const pool = [];
+  for(let i=0;i<weights.hard;i++) pool.push("hard");
+  for(let i=0;i<weights.soft;i++) pool.push("soft");
+  for(let i=0;i<weights.pair;i++) pool.push("pair");
+  if(pool.length === 0) pool.push("hard");
+
+  const cat = pool[Math.floor(Math.random()*pool.length)];
+  const dealerUp = randomDealerUp();
+  let player;
+  if(cat==="soft") player = genSoftHand();
+  else if(cat==="pair") player = genPairHand();
+  else player = genHardHand();
+  return { player, dealerUp, cat };
+}
+
+/* =========================
+   UI
+========================= */
+
+const elDealer = document.getElementById("dealerHand");
+const elPlayer = document.getElementById("playerHand");
+const elFeedback = document.getElementById("feedback");
+const elMeta = document.getElementById("meta");
+const elScore = document.getElementById("score");
+
+const btnHit = document.getElementById("btnHit");
+const btnStand = document.getElementById("btnStand");
+const btnDouble = document.getElementById("btnDouble");
+const btnSplit = document.getElementById("btnSplit");
+const btnNew = document.getElementById("btnNew");
+const btnShow = document.getElementById("btnShow");
+
+const wHard = document.getElementById("wHard");
+const wSoft = document.getElementById("wSoft");
+const wPair = document.getElementById("wPair");
+const wHardVal = document.getElementById("wHardVal");
+const wSoftVal = document.getElementById("wSoftVal");
+const wPairVal = document.getElementById("wPairVal");
+
+function weights(){
+  return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value };
+}
+function syncWeightLabels(){
+  wHardVal.textContent = wHard.value;
+  wSoftVal.textContent = wSoft.value;
+  wPairVal.textContent = wPair.value;
+}
+[wHard,wSoft,wPair].forEach(r => r.addEventListener("input", syncWeightLabels));
+syncWeightLabels();
+
+let state = {
+  player: [],
+  dealerUp: "",
+  cat: "",
+  locked: false,
+  correct: 0,
+  total: 0
+};
+
+function actionName(a){
+  return ({H:"Hit",S:"Stand",D:"Double",P:"Split"})[a] ?? a;
+}
+
+function setLocked(locked){
+  state.locked = locked;
+  const canDoubleNow = !locked && state.player.length===2;
+  const canSplitNow  = !locked && state.player.length===2 && canSplit(state.player);
+  btnHit.disabled = locked;
+  btnStand.disabled = locked;
+  btnDouble.disabled = !canDoubleNow;
+  btnSplit.disabled = !canSplitNow;
+}
+
+function renderCard(container, code){
+  const div = document.createElement("div");
+  div.className = "cardimg";
+  const img = document.createElement("img");
+  img.alt = code;
+  img.src = `cards/${code}.png`;
+  img.onload = () => {};
+  img.onerror = () => {
+    div.innerHTML = "";
+    const fb = document.createElement("div");
+    fb.className = "cardfallback";
+    fb.textContent = code;
+    div.appendChild(fb);
+  };
+  div.appendChild(img);
+  container.appendChild(div);
+}
+
+function render(){
+  elDealer.innerHTML = "";
+  elPlayer.innerHTML = "";
+  renderCard(elDealer, state.dealerUp);
+  state.player.forEach(c => renderCard(elPlayer, c));
+
+  const hv = handValue(state.player);
+  const splitTxt = canSplit(state.player) ? " · Kan splitta" : "";
+  elMeta.textContent = `Kategori: ${state.cat} · Total: ${hv.total}${hv.soft ? " (soft)" : ""}${splitTxt}`;
+  const acc = state.total ? (state.correct/state.total)*100 : 0;
+  elScore.textContent = `Score: ${state.correct}/${state.total} (${acc.toFixed(1)}%)`;
+}
+
+function newHand(){
+  const p = pickTrainingHand(weights());
+  state.player = p.player;
+  state.dealerUp = p.dealerUp;
+  state.cat = p.cat;
+  elFeedback.textContent = "Välj ett beslut.";
+  elFeedback.className = "feedback";
+  setLocked(false);
+  render();
+}
+
+function showBasic(){
+  const canDoubleNow = !state.locked && state.player.length===2;
+  const canSplitNow = !state.locked && state.player.length===2 && canSplit(state.player);
+  const sug = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+  elFeedback.textContent = `Basic strategy: ${actionName(sug)}`;
+  elFeedback.className = "feedback";
+}
+
+function choose(action){
+  if(state.locked) return;
+  const canDoubleNow = state.player.length===2;
+  const canSplitNow = state.player.length===2 && canSplit(state.player);
+  const sug = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+
+  state.total += 1;
+  if(action === sug){
+    state.correct += 1;
+    elFeedback.textContent = `✅ Rätt! Basic: ${actionName(sug)}`;
+    elFeedback.className = "feedback good";
+  } else {
+    elFeedback.textContent = `❌ Fel. Basic: ${actionName(sug)} (du valde ${actionName(action)})`;
+    elFeedback.className = "feedback bad";
+  }
+
+  setLocked(true);
+  render();
+}
+
+/* Events */
+btnNew.addEventListener("click", newHand);
+btnShow.addEventListener("click", showBasic);
+btnHit.addEventListener("click", ()=>choose("H"));
+btnStand.addEventListener("click", ()=>choose("S"));
+btnDouble.addEventListener("click", ()=>choose("D"));
+btnSplit.addEventListener("click", ()=>choose("P"));
+
+/* PWA: register service worker */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", async () => {
+    try { await navigator.serviceWorker.register("sw.js"); } catch(e) {}
+  });
+}
+
+newHand();
+</script>
+</body>
+</html>
