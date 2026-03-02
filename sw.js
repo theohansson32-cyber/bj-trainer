@@ -1,4 +1,4 @@
-const CACHE = "bj-trainer-v3";
+const CACHE = "bj-trainer-v2";
 const ASSETS = [
   "./",
   "./index.html",
