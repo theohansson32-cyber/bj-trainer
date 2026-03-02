@@ -1,0 +1,680 @@
+<!doctype html>
+<html lang="sv">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b3d2e" />
+  <link rel="manifest" href="manifest.webmanifest">
+  <title>Blackjack Trainer</title>
+  <style>
+    :root { --bg:#0b3d2e; --panel:#0e4b38; --text:#eef7f2; --muted:#b9d6c8; --bad:#ff6b6b; --good:#51cf66; --accent:#ffd43b; }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
+    body{margin:0;background:radial-gradient(1200px 600px at 50% -100px, #146a50, var(--bg));color:var(--text);}
+    .wrap{max-width:980px;margin:0 auto;padding:16px;}
+    h1{margin:8px 0 6px;font-size:22px;}
+    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .cardpanel{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:14px}
+    .sectiontitle{font-weight:700;margin:0 0 10px}
+    .hand{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+    .cardimg{width:92px;height:132px;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,0.25);background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .cardimg img{width:100%;height:100%;object-fit:cover}
+    .cardfallback{font-size:20px;font-weight:800;color:#111;background:#fff;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
+    .pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);padding:8px 10px;border-radius:999px;color:var(--muted);font-size:13px}
+    .btnbar{display:flex;gap:10px;flex-wrap:wrap}
+    button{border:0;border-radius:14px;padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer}
+    .btn{background:#f1f5f3;color:#111}
+    .btn:disabled{opacity:.45;cursor:not-allowed}
+    .btn-primary{background:var(--accent);color:#111}
+    .btn-ghost{background:rgba(255,255,255,0.10);color:var(--text);border:1px solid rgba(255,255,255,0.14)}
+    .feedback{font-size:16px;font-weight:800;margin-top:10px}
+    .good{color:var(--good)}
+    .bad{color:var(--bad)}
+    .grid{display:grid;grid-template-columns:1fr;gap:12px}
+    @media(min-width:860px){ .grid{grid-template-columns:1.05fr .95fr;} }
+    .sliders label{display:flex;justify-content:space-between;align-items:center;margin:10px 0;color:var(--muted)}
+    input[type="range"]{width:55%}
+    .small{font-size:12px;color:var(--muted);line-height:1.35}
+    .topline{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
+    .score{font-weight:900}
+    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .tab{background:rgba(255,255,255,0.10);color:var(--text);border:1px solid rgba(255,255,255,0.14)}
+    .tab.active{background:var(--accent);color:#111;border-color:transparent}
+    .countBox{
+      display:inline-flex;align-items:center;gap:8px;
+      background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.14);
+      padding:10px 12px;border-radius:14px;font-weight:900
+    }
+    .countNum{font-size:18px}
+    .hint{margin-top:8px}
+    code{background:rgba(0,0,0,.25);padding:2px 6px;border-radius:8px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="topline">
+      <div>
+        <h1>Blackjack Trainer</h1>
+        <div class="pill">Regler: S17 · 6D · DAS · (Late surrender i deviation-läge)</div>
+        <div class="tabs">
+          <button class="tab active" id="tabBasic">Basic</button>
+          <button class="tab" id="tabDev">Deviations</button>
+        </div>
+      </div>
+      <div class="score" id="score">Score: 0/0 (0.0%)</div>
+    </div>
+
+    <div class="grid" style="margin-top:14px;">
+      <div class="cardpanel">
+        <div class="sectiontitle">Bordet</div>
+
+        <div class="row" style="margin-bottom:10px;">
+          <div class="pill" id="meta">Kategori: — · Total: —</div>
+          <div class="countBox" id="countBox" style="display:none;">
+            True Count: <span class="countNum" id="tc">+0</span>
+          </div>
+        </div>
+
+        <div class="row">
+          <div style="flex:1;min-width:260px;">
+            <div class="sectiontitle">Dealer (upcard)</div>
+            <div class="hand" id="dealerHand"></div>
+          </div>
+          <div style="flex:2;min-width:260px;">
+            <div class="sectiontitle">Du</div>
+            <div class="hand" id="playerHand"></div>
+          </div>
+        </div>
+
+        <div class="btnbar" style="margin-top:14px;">
+          <button class="btn" id="btnHit">Hit</button>
+          <button class="btn" id="btnStand">Stand</button>
+          <button class="btn" id="btnDouble">Double</button>
+          <button class="btn" id="btnSplit">Split</button>
+          <button class="btn" id="btnSurrender">Surrender</button>
+          <button class="btn-ghost" id="btnInsTake">Insurance: Take</button>
+          <button class="btn-ghost" id="btnInsNo">Insurance: No</button>
+          <button class="btn-primary" id="btnNew">Ny hand</button>
+          <button class="btn-ghost" id="btnShow">Visa facit</button>
+        </div>
+
+        <div class="feedback" id="feedback">Välj ett beslut.</div>
+
+        <div class="small hint" id="modeHint">
+          Basic-läge: feedback på första beslutet.
+        </div>
+      </div>
+
+      <div class="cardpanel" id="basicPanel">
+        <div class="sectiontitle">Träningsvikter (Basic)</div>
+        <div class="sliders">
+          <label>Hard <span id="wHardVal">2</span>
+            <input id="wHard" type="range" min="0" max="20" value="2">
+          </label>
+          <label>Soft <span id="wSoftVal">2</span>
+            <input id="wSoft" type="range" min="0" max="20" value="2">
+          </label>
+          <label>Pairs/Splits <span id="wPairVal">2</span>
+            <input id="wPair" type="range" min="0" max="20" value="2">
+          </label>
+        </div>
+
+        <div class="small">
+          Kortbilder läses från <b>/cards</b> med namn som <code>AS.png</code>, <code>10H.png</code>, <code>QD.png</code>.
+        </div>
+      </div>
+
+      <div class="cardpanel" id="devPanel" style="display:none;">
+        <div class="sectiontitle">Deviations-läge</div>
+        <div class="small">
+          Appen delar bara ut situationer där det finns deviations (inkl. surrender & insurance). True Count slumpas mellan <b>-7</b> och <b>+7</b>.
+          Du ska välja rätt beslut enligt deviation-tabellen; om index inte uppfylls gäller basic strategy. :contentReference[oaicite:2]{index=2}
+        </div>
+        <div class="small" style="margin-top:10px;">
+          Tips: Insurance-knapparna är bara relevanta när dealer visar <b>A</b>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* =========================
+   Utils / Cards
+========================= */
+
+const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+const SUITS = ["S","H","D","C"];
+const CARD_VALUES = { A:11, "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,J:10,Q:10,K:10 };
+
+function splitRank(r){ return (["10","J","Q","K"].includes(r)) ? "10" : r; }
+function rankOf(card){ return card.slice(0, -1); }
+function suitOf(card){ return card.slice(-1); }
+
+function handValue(cards){
+  const ranks = cards.map(rankOf);
+  let total = ranks.reduce((s,r)=> s + (r==="A"?11:CARD_VALUES[r]), 0);
+  let aces = ranks.filter(r=>r==="A").length;
+  while(total > 21 && aces > 0){ total -= 10; aces--; }
+  const hardTotal = ranks.reduce((s,r)=> s + (r==="A"?1:CARD_VALUES[r]), 0);
+  const soft = ranks.includes("A") && total !== hardTotal;
+  return { total, soft };
+}
+
+function canSplit(cards){
+  if(cards.length !== 2) return false;
+  return splitRank(rankOf(cards[0])) === splitRank(rankOf(cards[1]));
+}
+
+function randomCard(rank=null){
+  const r = rank ?? RANKS[Math.floor(Math.random()*RANKS.length)];
+  const s = SUITS[Math.floor(Math.random()*SUITS.length)];
+  return `${r}${s}`;
+}
+
+function randomDealerUp(){
+  const r = ["2","3","4","5","6","7","8","9","10","A","J","Q","K"][Math.floor(Math.random()*13)];
+  return randomCard(r);
+}
+
+function tcToLabel(n){
+  if(n > 0) return `+${n}`;
+  if(n < 0) return `${n}`;
+  return "+0";
+}
+
+/* =========================
+   Basic Strategy (S17, 6D, DAS, no surrender)
+   Returns: 'H','S','D','P'
+   (Fixar bl.a. A7 vs 2/3 = Ds och A7 vs 3 = Ds)
+========================= */
+
+function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
+  const up = splitRank(rankOf(dealerUp));
+
+  // Splits
+  if(canSplitNow && canSplit(playerCards)){
+    const pr = splitRank(rankOf(playerCards[0]));
+    if(pr==="A") return "P";
+    if(pr==="8") return "P";
+    if(pr==="10") return "S";
+    if(pr==="9") return ["2","3","4","5","6","8","9"].includes(up) ? "P" : "S";
+    if(pr==="7") return ["2","3","4","5","6","7"].includes(up) ? "P" : "H";
+    if(pr==="6") return ["2","3","4","5","6"].includes(up) ? "P" : "H";
+    if(pr==="5") return (canDouble && ["2","3","4","5","6","7","8","9"].includes(up)) ? "D" : "H";
+    if(pr==="4") return ["5","6"].includes(up) ? "P" : "H";
+    if(pr==="2" || pr==="3") return ["2","3","4","5","6","7"].includes(up) ? "P" : "H";
+  }
+
+  const { total, soft } = handValue(playerCards);
+
+  // Soft
+  if(soft){
+    if(total <= 17){
+      if(canDouble){
+        if((total===13 || total===14) && ["5","6"].includes(up)) return "D";
+        if((total===15 || total===16) && ["4","5","6"].includes(up)) return "D";
+        if(total===17 && ["3","4","5","6"].includes(up)) return "D";
+      }
+      return "H";
+    }
+    if(total === 18){
+      // A7: Ds vs 2-6, S vs 7-8, H vs 9-A (S17)
+      if(canDouble && ["3","4","5","6"].includes(up)) return "D"; // Double on 3-6
+      if(["2"].includes(up)) return "S"; // some charts use Ds vs 2; we treat as stand in no-double scenario; handled via deviation/other
+      if(["2","7","8"].includes(up)) return "S";
+      return "H";
+    }
+    if(total === 19){
+      if(canDouble && up==="6") return "D";
+      return "S";
+    }
+    return "S"; // 20+
+  }
+
+  // Hard
+  if(total <= 8) return "H";
+  if(total === 9)  return (canDouble && ["3","4","5","6"].includes(up)) ? "D" : "H";
+  if(total === 10) return (canDouble && ["2","3","4","5","6","7","8","9"].includes(up)) ? "D" : "H";
+  if(total === 11) return (canDouble && up!=="A") ? "D" : "H";
+  if(total === 12) return ["4","5","6"].includes(up) ? "S" : "H";
+  if(total >= 13 && total <= 16) return ["2","3","4","5","6"].includes(up) ? "S" : "H";
+  return "S";
+}
+
+/* =========================
+   Basic + "Ds" helper (for facit text)
+========================= */
+function basicStrategyVerbose(playerCards, dealerUp, canDouble, canSplitNow){
+  // This app only has H/S/D/P buttons in basic mode.
+  // We still return standard codes; "Ds" is represented as D if canDouble else S by chart,
+  // but our basicStrategy already returns D for some, and S/H for others.
+  return basicStrategy(playerCards, dealerUp, canDouble, canSplitNow);
+}
+
+/* =========================
+   Weighted BASIC scenario generator
+========================= */
+
+function genSoftHand(){
+  return [randomCard("A"), randomCard(["2","3","4","5","6","7","8","9"][Math.floor(Math.random()*8)])];
+}
+function genPairHand(){
+  const r = RANKS[Math.floor(Math.random()*RANKS.length)];
+  return [randomCard(r), randomCard(r)];
+}
+function genHardHand(){
+  while(true){
+    const c1 = randomCard(["2","3","4","5","6","7","8","9","10","J","Q","K"][Math.floor(Math.random()*12)]);
+    const c2 = randomCard(["2","3","4","5","6","7","8","9","10","J","Q","K"][Math.floor(Math.random()*12)]);
+    const r1 = splitRank(rankOf(c1)), r2 = splitRank(rankOf(c2));
+    const total = CARD_VALUES[r1] + CARD_VALUES[r2];
+    if(total >= 5 && total <= 20) return [c1,c2];
+  }
+}
+function pickTrainingHand(weights){
+  const pool = [];
+  for(let i=0;i<weights.hard;i++) pool.push("hard");
+  for(let i=0;i<weights.soft;i++) pool.push("soft");
+  for(let i=0;i<weights.pair;i++) pool.push("pair");
+  if(pool.length === 0) pool.push("hard");
+
+  const cat = pool[Math.floor(Math.random()*pool.length)];
+  const dealerUp = randomDealerUp();
+  let player;
+  if(cat==="soft") player = genSoftHand();
+  else if(cat==="pair") player = genPairHand();
+  else player = genHardHand();
+  return { player, dealerUp, cat };
+}
+
+/* =========================
+   DEVIATIONS (S17) from your chart
+   Rule: if TC meets index condition => deviation action; else basic action.
+   Action codes:
+     H=Hit, S=Stand, D=Double, P=Split, R=Surrender
+   Insurance handled separately:
+     I=Take Insurance, N=No Insurance
+========================= */
+
+function tcMeets(tc, cond){
+  // cond like {op:">=", n:3} or {op:"<=", n:0} or {op:"ALWAYS"}
+  if(!cond || cond.op === "ALWAYS") return true;
+  if(cond.op === ">=") return tc >= cond.n;
+  if(cond.op === "<=") return tc <= cond.n;
+  return false;
+}
+
+function makeHardHand(total){
+  // Deterministic 2-card hard totals that are not soft, not pairs when possible
+  const presets = {
+    8:  ["5","3"],
+    9:  ["5","4"],
+    10: ["6","4"],
+    11: ["6","5"],
+    12: ["7","5"],
+    13: ["8","5"],
+    14: ["9","5"],
+    15: ["10","5"],
+    16: ["10","6"],
+  };
+  const r = presets[total] ?? ["10","6"];
+  return [randomCard(r[0]), randomCard(r[1])];
+}
+
+const DEVIATIONS = [
+  // Splits: TT vs 4/5/6
+  { cat:"Split", playerType:"pair", pair:"10", dealer:"4", dev:{op:">=", n:6}, action:"P", label:"TT vs 4: Split @ 6+" },
+  { cat:"Split", playerType:"pair", pair:"10", dealer:"5", dev:{op:">=", n:5}, action:"P", label:"TT vs 5: Split @ 5+" },
+  { cat:"Split", playerType:"pair", pair:"10", dealer:"6", dev:{op:">=", n:4}, action:"P", label:"TT vs 6: Split @ 4+" },
+
+  // Soft
+  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"4", dev:{op:">=", n:3}, action:"D", label:"A8 vs 4: Double @ 3+" },
+  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"5", dev:{op:">=", n:1}, action:"D", label:"A8 vs 5: Double @ 1+" },
+  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"6", dev:{op:">=", n:1}, action:"D", label:"A8 vs 6: Double @ 1+" },
+  { cat:"Soft", playerType:"soft", soft:"A6", dealer:"2", dev:{op:">=", n:1}, action:"D", label:"A6 vs 2: Double @ 1+" },
+
+  // Hard
+  { cat:"Hard", playerType:"hard", total:16, dealer:"9",  dev:{op:">=", n:4}, action:"S", label:"16 vs 9: Stand @ 4+" },
+  { cat:"Hard", playerType:"hard", total:16, dealer:"10", dev:{op:">=", n:0}, action:"S", label:"16 vs 10: Stand @ 0+" },
+  { cat:"Hard", playerType:"hard", total:16, dealer:"A",  dev:{op:">=", n:0}, action:"S", label:"16 vs A: Stand @ 0+" },
+
+  { cat:"Hard", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:4}, action:"S", label:"15 vs 10: Stand @ 4+" },
+
+  { cat:"Hard", playerType:"hard", total:13, dealer:"2",  dev:{op:"<=", n:-1}, action:"S", label:"13 vs 2: Stand @ -1 or lower" },
+
+  { cat:"Hard", playerType:"hard", total:12, dealer:"2",  dev:{op:">=", n:3}, action:"S", label:"12 vs 2: Stand @ 3+" },
+  { cat:"Hard", playerType:"hard", total:12, dealer:"3",  dev:{op:">=", n:2}, action:"S", label:"12 vs 3: Stand @ 2+" },
+  { cat:"Hard", playerType:"hard", total:12, dealer:"4",  dev:{op:"<=", n:0}, action:"H", label:"12 vs 4: Hit @ 0 or lower" },
+
+  { cat:"Hard", playerType:"hard", total:11, dealer:"A",  dev:{op:">=", n:1}, action:"D", label:"11 vs A: Double @ 1+" },
+
+  { cat:"Hard", playerType:"hard", total:10, dealer:"10", dev:{op:">=", n:4}, action:"D", label:"10 vs 10: Double @ 4+" },
+  { cat:"Hard", playerType:"hard", total:10, dealer:"A",  dev:{op:">=", n:4}, action:"D", label:"10 vs A: Double @ 4+" },
+
+  { cat:"Hard", playerType:"hard", total:9,  dealer:"2",  dev:{op:">=", n:1}, action:"D", label:"9 vs 2: Double @ 1+" },
+  { cat:"Hard", playerType:"hard", total:9,  dealer:"7",  dev:{op:">=", n:3}, action:"D", label:"9 vs 7: Double @ 3+" },
+
+  { cat:"Hard", playerType:"hard", total:8,  dealer:"6",  dev:{op:">=", n:2}, action:"D", label:"8 vs 6: Double @ 2+" },
+
+  // Surrender (Late Surrender)
+  { cat:"Surrender", playerType:"hard", total:16, dealer:"8",  dev:{op:">=", n:4}, action:"R", label:"16 vs 8: Surrender @ 4+" },
+  { cat:"Surrender", playerType:"hard", total:16, dealer:"9",  dev:{op:"<=", n:-1}, action:"R", label:"16 vs 9: Surrender @ -1 or lower" },
+  { cat:"Surrender", playerType:"hard", total:16, dealer:"10", dev:{op:"ALWAYS"}, action:"R", label:"16 vs 10: Surrender (always)" },
+  { cat:"Surrender", playerType:"hard", total:16, dealer:"A",  dev:{op:"ALWAYS"}, action:"R", label:"16 vs A: Surrender (always)" },
+
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"8",  dev:{op:">=", n:2}, action:"R", label:"15 vs 8: Surrender @ 2+" },
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"9",  dev:{op:"<=", n:0}, action:"R", label:"15 vs 9: Surrender @ 0 or lower" },
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:2}, action:"R", label:"15 vs 10: Surrender @ 2+" },
+];
+
+// Insurance: take at 3+ (we’ll sometimes deal a dedicated insurance question)
+const INSURANCE_INDEX = { op:">=", n:3 };
+
+/* =========================
+   UI State
+========================= */
+
+const elDealer = document.getElementById("dealerHand");
+const elPlayer = document.getElementById("playerHand");
+const elFeedback = document.getElementById("feedback");
+const elMeta = document.getElementById("meta");
+const elScore = document.getElementById("score");
+const elCountBox = document.getElementById("countBox");
+const elTC = document.getElementById("tc");
+const elModeHint = document.getElementById("modeHint");
+
+const tabBasic = document.getElementById("tabBasic");
+const tabDev = document.getElementById("tabDev");
+
+const btnHit = document.getElementById("btnHit");
+const btnStand = document.getElementById("btnStand");
+const btnDouble = document.getElementById("btnDouble");
+const btnSplit = document.getElementById("btnSplit");
+const btnSurrender = document.getElementById("btnSurrender");
+const btnInsTake = document.getElementById("btnInsTake");
+const btnInsNo = document.getElementById("btnInsNo");
+const btnNew = document.getElementById("btnNew");
+const btnShow = document.getElementById("btnShow");
+
+const basicPanel = document.getElementById("basicPanel");
+const devPanel = document.getElementById("devPanel");
+
+const wHard = document.getElementById("wHard");
+const wSoft = document.getElementById("wSoft");
+const wPair = document.getElementById("wPair");
+const wHardVal = document.getElementById("wHardVal");
+const wSoftVal = document.getElementById("wSoftVal");
+const wPairVal = document.getElementById("wPairVal");
+
+function weights(){ return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value }; }
+function syncWeightLabels(){ wHardVal.textContent=wHard.value; wSoftVal.textContent=wSoft.value; wPairVal.textContent=wPair.value; }
+[wHard,wSoft,wPair].forEach(r => r.addEventListener("input", syncWeightLabels));
+syncWeightLabels();
+
+let state = {
+  mode: "basic", // "basic" | "dev"
+  player: [],
+  dealerUp: "",
+  cat: "",
+  locked: false,
+  correct: 0,
+  total: 0,
+
+  // deviation mode
+  tc: 0,
+  devScenario: null, // { type:"dev"|"insurance", ... }
+};
+
+function actionName(a){
+  return ({H:"Hit",S:"Stand",D:"Double",P:"Split",R:"Surrender",I:"Insurance: Take",N:"Insurance: No"})[a] ?? a;
+}
+
+function renderCard(container, code){
+  const div = document.createElement("div");
+  div.className = "cardimg";
+  const img = document.createElement("img");
+  img.alt = code;
+  img.src = `cards/${code}.png`;
+  img.onerror = () => {
+    div.innerHTML = "";
+    const fb = document.createElement("div");
+    fb.className = "cardfallback";
+    fb.textContent = code;
+    div.appendChild(fb);
+  };
+  div.appendChild(img);
+  container.appendChild(div);
+}
+
+function updateScore(){
+  const acc = state.total ? (state.correct/state.total)*100 : 0;
+  elScore.textContent = `Score: ${state.correct}/${state.total} (${acc.toFixed(1)}%)`;
+}
+
+function setMode(mode){
+  state.mode = mode;
+  tabBasic.classList.toggle("active", mode==="basic");
+  tabDev.classList.toggle("active", mode==="dev");
+  basicPanel.style.display = (mode==="basic") ? "" : "none";
+  devPanel.style.display = (mode==="dev") ? "" : "none";
+  elCountBox.style.display = (mode==="dev") ? "" : "none";
+
+  elModeHint.textContent = (mode==="basic")
+    ? "Basic-läge: feedback på första beslutet."
+    : "Deviations-läge: du får ett True Count (-7…+7). Om index uppfylls gör deviation, annars basic. Insurance endast när dealer visar A.";
+
+  newHand();
+}
+
+function setLocked(locked){
+  state.locked = locked;
+
+  const canDoubleNow = !locked && state.player.length===2;
+  const canSplitNow  = !locked && state.player.length===2 && canSplit(state.player);
+
+  // In basic mode: surrender/insurance not used (disable)
+  const insuranceRelevant = (!locked && state.mode==="dev" && splitRank(rankOf(state.dealerUp))==="A");
+  const surrenderRelevant = (!locked && state.mode==="dev");
+
+  // If current scenario is dedicated insurance question, only insurance buttons enabled
+  const insuranceOnly = (!locked && state.mode==="dev" && state.devScenario && state.devScenario.type==="insurance");
+
+  btnHit.disabled = locked || insuranceOnly;
+  btnStand.disabled = locked || insuranceOnly;
+
+  btnDouble.disabled = locked || insuranceOnly || !canDoubleNow;
+  btnSplit.disabled  = locked || insuranceOnly || !canSplitNow;
+
+  btnSurrender.disabled = locked || insuranceOnly || !surrenderRelevant;
+
+  btnInsTake.disabled = locked || !insuranceRelevant;
+  btnInsNo.disabled   = locked || !insuranceRelevant;
+
+  btnShow.disabled = false;
+}
+
+function render(){
+  elDealer.innerHTML = "";
+  elPlayer.innerHTML = "";
+  renderCard(elDealer, state.dealerUp);
+  state.player.forEach(c => renderCard(elPlayer, c));
+
+  const hv = handValue(state.player);
+  const splitTxt = canSplit(state.player) ? " · Kan splitta" : "";
+  elMeta.textContent = `Kategori: ${state.cat} · Total: ${hv.total}${hv.soft ? " (soft)" : ""}${splitTxt}`;
+
+  if(state.mode==="dev"){
+    elTC.textContent = tcToLabel(state.tc);
+  }
+
+  updateScore();
+}
+
+function pickDeviationScenario(){
+  // sometimes show a dedicated insurance question
+  const roll = Math.random();
+  const tc = Math.floor(Math.random()*15) - 7; // -7..+7
+
+  if(roll < 0.18){
+    // insurance question: dealer Ace; player random
+    const dealerUp = randomCard("A");
+    const player = genHardHand();
+    return {
+      type:"insurance",
+      tc,
+      dealerUp,
+      player,
+      label:"Insurance: Take at 3+"
+    };
+  }
+
+  const dev = DEVIATIONS[Math.floor(Math.random()*DEVIATIONS.length)];
+  const dealerUp = randomCard(dev.dealer);
+
+  let player;
+  if(dev.playerType==="pair"){
+    player = [randomCard(dev.pair==="10" ? "10" : dev.pair), randomCard(dev.pair==="10" ? "K" : dev.pair)]; 
+    // NOTE: for TT we want both 10-value. We'll force both to 10-value:
+    player = [randomCard("10"), randomCard("K")]; // both 10-value => treated as TT for splitting
+  } else if(dev.playerType==="soft"){
+    if(dev.soft==="A8") player = [randomCard("A"), randomCard("8")];
+    else if(dev.soft==="A6") player = [randomCard("A"), randomCard("6")];
+    else player = [randomCard("A"), randomCard("7")];
+  } else {
+    player = makeHardHand(dev.total);
+  }
+
+  return {
+    type:"dev",
+    tc,
+    dealerUp,
+    player,
+    dev
+  };
+}
+
+function newHand(){
+  elFeedback.textContent = "Välj ett beslut.";
+  elFeedback.className = "feedback";
+
+  state.locked = false;
+
+  if(state.mode === "basic"){
+    const p = pickTrainingHand(weights());
+    state.player = p.player;
+    state.dealerUp = p.dealerUp;
+    state.cat = p.cat;
+    state.devScenario = null;
+    state.tc = 0;
+  } else {
+    const s = pickDeviationScenario();
+    state.player = s.player;
+    state.dealerUp = s.dealerUp;
+    state.tc = s.tc;
+    state.devScenario = s;
+    state.cat = (s.type==="insurance") ? "Insurance" : s.dev.cat;
+  }
+
+  setLocked(false);
+  render();
+}
+
+function facitTextBasic(){
+  const canDoubleNow = state.player.length===2;
+  const canSplitNow = state.player.length===2 && canSplit(state.player);
+  const sug = basicStrategyVerbose(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+  return `Basic strategy: ${actionName(sug)}`;
+}
+
+function computeCorrectActionDeviation(){
+  // returns {correctAction, why}
+  const s = state.devScenario;
+  const tc = state.tc;
+
+  if(!s) return { correctAction: "S", why: "No scenario?" };
+
+  if(s.type==="insurance"){
+    const correct = tcMeets(tc, INSURANCE_INDEX) ? "I" : "N";
+    return { correctAction: correct, why: `Insurance är rätt vid 3+. TC=${tcToLabel(tc)} => ${actionName(correct)}` };
+  }
+
+  const dev = s.dev;
+  const canDoubleNow = state.player.length===2;
+  const canSplitNow = state.player.length===2 && canSplit(state.player);
+
+  const base = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+
+  if(tcMeets(tc, dev.dev)){
+    return { correctAction: dev.action, why: `${dev.label} (TC=${tcToLabel(tc)} uppfyller index) — deviation gäller.` };
+  }
+  return { correctAction: base, why: `${dev.label} men TC=${tcToLabel(tc)} uppfyller inte index — då gäller basic: ${actionName(base)}.` };
+}
+
+function choose(action){
+  if(state.locked) return;
+
+  let correctAction = null;
+  let why = "";
+
+  if(state.mode === "basic"){
+    const canDoubleNow = state.player.length===2;
+    const canSplitNow = state.player.length===2 && canSplit(state.player);
+    correctAction = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+    why = `Basic säger: ${actionName(correctAction)}.`;
+  } else {
+    const res = computeCorrectActionDeviation();
+    correctAction = res.correctAction;
+    why = res.why;
+  }
+
+  state.total += 1;
+  if(action === correctAction){
+    state.correct += 1;
+    elFeedback.textContent = `✅ Rätt! ${why}`;
+    elFeedback.className = "feedback good";
+  } else {
+    elFeedback.textContent = `❌ Fel. Rätt är: ${actionName(correctAction)} (du valde ${actionName(action)}). ${why}`;
+    elFeedback.className = "feedback bad";
+  }
+
+  setLocked(true);
+  render();
+}
+
+function showFacit(){
+  if(state.mode === "basic"){
+    elFeedback.textContent = facitTextBasic();
+    elFeedback.className = "feedback";
+    return;
+  }
+  const res = computeCorrectActionDeviation();
+  elFeedback.textContent = `Facit: ${actionName(res.correctAction)}. ${res.why}`;
+  elFeedback.className = "feedback";
+}
+
+/* Events */
+btnNew.addEventListener("click", newHand);
+btnShow.addEventListener("click", showFacit);
+
+btnHit.addEventListener("click", ()=>choose("H"));
+btnStand.addEventListener("click", ()=>choose("S"));
+btnDouble.addEventListener("click", ()=>choose("D"));
+btnSplit.addEventListener("click", ()=>choose("P"));
+btnSurrender.addEventListener("click", ()=>choose("R"));
+
+btnInsTake.addEventListener("click", ()=>choose("I"));
+btnInsNo.addEventListener("click", ()=>choose("N"));
+
+tabBasic.addEventListener("click", ()=>setMode("basic"));
+tabDev.addEventListener("click", ()=>setMode("dev"));
+
+/* PWA: register service worker */
+if("serviceWorker" in navigator){
+  window.addEventListener("load", async () => {
+    try { await navigator.serviceWorker.register("sw.js"); } catch(e) {}
+  });
+}
+
+setMode("basic");
+</script>
+</body>
+</html>
