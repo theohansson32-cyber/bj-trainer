@@ -103,7 +103,6 @@
 
     .btn { background:#f1f5f3; color:#111; }
     .btn:disabled { opacity:.45; cursor:not-allowed; }
-
     .btn-primary { background:var(--accent); color:#111; }
 
     .btn-ghost {
@@ -180,7 +179,6 @@
     }
 
     .countNum { font-size:18px; }
-    .hint { margin-top:8px; }
 
     code {
       background:rgba(0,0,0,.25);
@@ -279,7 +277,6 @@
 </head>
 <body>
   <div class="wrap">
-
     <div class="authMenu">
       <button id="authToggle" title="Account">
         <span>👤</span>
@@ -354,7 +351,7 @@
 
         <div class="feedback" id="feedback">Choose an action.</div>
 
-        <div class="small hint" id="modeHint">
+        <div class="small" id="modeHint">
           Basic mode: feedback on the first decision.
         </div>
       </div>
@@ -412,7 +409,8 @@ try {
         auth: {
           persistSession: true,
           autoRefreshToken: true,
-          detectSessionInUrl: true
+          detectSessionInUrl: true,
+          storageKey: "bj-trainer-auth"
         }
       }
     );
@@ -1016,29 +1014,46 @@ function showFacit(){
   elFeedback.className = "feedback";
 }
 
-async function getCurrentUser(){
+async function getCurrentSession(){
   if (!supabaseClient) return null;
-  const { data, error } = await supabaseClient.auth.getUser();
-  if (error) return null;
-  return data.user ?? null;
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error) {
+    console.error("getSession error:", error);
+    return null;
+  }
+  return data.session ?? null;
+}
+
+async function getCurrentUser(){
+  const session = await getCurrentSession();
+  return session?.user ?? null;
+}
+
+function applyLoggedOutUI(){
+  authUser.textContent = "Not logged in";
+  authBadge.textContent = "Not logged in";
+  authLoggedOutView.style.display = "block";
+  authLoggedInView.style.display = "none";
+  emailInput.value = "";
+  passwordInput.value = "";
+}
+
+function applyLoggedInUI(user){
+  const label = user?.email || "Logged in";
+  authUser.textContent = `Logged in as ${label}`;
+  authBadge.textContent = label;
+  authLoggedOutView.style.display = "none";
+  authLoggedInView.style.display = "block";
 }
 
 async function refreshAuthUI(){
-  const user = await getCurrentUser();
+  const session = await getCurrentSession();
+  const user = session?.user ?? null;
 
   if (user) {
-    const label = user.email || "Logged in";
-    authUser.textContent = `Logged in as ${label}`;
-    authBadge.textContent = label;
-    authLoggedOutView.style.display = "none";
-    authLoggedInView.style.display = "block";
+    applyLoggedInUI(user);
   } else {
-    authUser.textContent = "Not logged in";
-    authBadge.textContent = "Not logged in";
-    authLoggedOutView.style.display = "block";
-    authLoggedInView.style.display = "none";
-    emailInput.value = "";
-    passwordInput.value = "";
+    applyLoggedOutUI();
   }
 }
 
@@ -1075,15 +1090,20 @@ async function login(){
     return;
   }
 
-  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
   if (error) {
     authStatus.textContent = error.message;
     return;
   }
 
+  if (data?.user) {
+    applyLoggedInUI(data.user);
+  } else {
+    await refreshAuthUI();
+  }
+
   authStatus.textContent = "Logged in.";
-  await refreshAuthUI();
   authDropdown.classList.remove("open");
 }
 
@@ -1093,21 +1113,21 @@ async function logout(){
     return;
   }
 
-  const { error } = await supabaseClient.auth.signOut({ scope: "global" });
+  try {
+    const { error } = await supabaseClient.auth.signOut();
 
-  if (error) {
-    authStatus.textContent = error.message;
-    return;
+    if (error) {
+      authStatus.textContent = error.message;
+      return;
+    }
+
+    applyLoggedOutUI();
+    authStatus.textContent = "Logged out.";
+    authDropdown.classList.remove("open");
+  } catch (err) {
+    console.error("logout error:", err);
+    authStatus.textContent = "Logout failed.";
   }
-
-  authStatus.textContent = "Logged out.";
-  authDropdown.classList.remove("open");
-  authUser.textContent = "Not logged in";
-  authBadge.textContent = "Not logged in";
-  authLoggedOutView.style.display = "block";
-  authLoggedInView.style.display = "none";
-  emailInput.value = "";
-  passwordInput.value = "";
 }
 
 btnNew.addEventListener("click", newHand);
@@ -1143,16 +1163,18 @@ document.addEventListener("click", ()=>{
 });
 
 if (supabaseClient) {
-  supabaseClient.auth.onAuthStateChange(async (event) => {
-    await refreshAuthUI();
-
-    if (event === "SIGNED_OUT") {
-      authStatus.textContent = "Logged out.";
-      authDropdown.classList.remove("open");
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT" || !session) {
+      applyLoggedOutUI();
+      authStatus.textContent = event === "SIGNED_OUT" ? "Logged out." : authStatus.textContent;
+      return;
     }
 
-    if (event === "SIGNED_IN") {
-      authStatus.textContent = "Logged in.";
+    if (session?.user) {
+      applyLoggedInUI(session.user);
+      if (event === "SIGNED_IN") {
+        authStatus.textContent = "Logged in.";
+      }
     }
   });
 }
@@ -1163,8 +1185,10 @@ if("serviceWorker" in navigator){
   });
 }
 
-refreshAuthUI();
-setMode("basic");
+(async function boot(){
+  await refreshAuthUI();
+  setMode("basic");
+})();
 </script>
 </body>
 </html>
