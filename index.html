@@ -732,6 +732,10 @@ let state = {
   handUserAction: null,
 };
 
+function updateDeviationTabLock(isLoggedIn){
+  tabDev.textContent = isLoggedIn ? "Deviations 🔓" : "Deviations 🔒";
+}
+
 function renderCard(container, code){
   const div = document.createElement("div");
   div.className = "cardimg";
@@ -1036,6 +1040,7 @@ function applyLoggedOutUI(){
   authLoggedInView.style.display = "none";
   emailInput.value = "";
   passwordInput.value = "";
+  updateDeviationTabLock(false);
 
   if (state.mode === "dev") {
     setMode("basic");
@@ -1048,6 +1053,7 @@ function applyLoggedInUI(user){
   authBadge.textContent = label;
   authLoggedOutView.style.display = "none";
   authLoggedInView.style.display = "block";
+  updateDeviationTabLock(true);
 }
 
 async function refreshAuthUI(){
