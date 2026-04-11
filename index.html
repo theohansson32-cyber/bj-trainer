@@ -59,8 +59,19 @@
       font-weight:900;
     }
   </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
 <body>
+  <div id="authBox">
+  <input id="email" placeholder="Email">
+  <input id="password" type="password" placeholder="Password">
+
+  <button onclick="signUp()">Sign up</button>
+  <button onclick="login()">Login</button>
+  <button onclick="logout()">Logout</button>
+
+  <p id="authStatus"></p>
+</div>
   <div class="wrap">
     <div class="topline">
       <div>
@@ -157,6 +168,10 @@
   </div>
 
 <script>
+const supabase = window.supabase.createClient(
+  "https://xhxkyongmcduyibhkwby.supabase.co",
+  "sb_publishable_DyyjT6peOtnrtt86U0AXTA_yZYvy-qc"
+);
 const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const SUITS = ["S","H","D","C"];
 const CARD_VALUES = { A:11, "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,J:10,Q:10,K:10 };
@@ -801,6 +816,37 @@ function showFacit(){
     elFeedback.className = "feedback";
     return;
   }
+  
+async function signUp(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signUp({
+    email,
+    password
+  });
+
+  document.getElementById("authStatus").innerText =
+    error ? error.message : "Signed up! Check email.";
+}
+
+async function login(){
+  const email = document.getElementById("email").value;
+  const password = document.getElementById("password").value;
+
+  const { error } = await supabase.auth.signInWithPassword({
+    email,
+    password
+  });
+
+  document.getElementById("authStatus").innerText =
+    error ? error.message : "Logged in!";
+}
+
+async function logout(){
+  await supabase.auth.signOut();
+  document.getElementById("authStatus").innerText = "Logged out";
+}
 
   const handRes = computeCorrectHandActionDeviation();
   const insuranceRes = state.insuranceNeeded ? computeCorrectInsuranceAction() : null;
@@ -816,6 +862,17 @@ function showFacit(){
   elFeedback.className = "feedback";
 }
 
+async function checkUser(){
+  const { data } = await supabase.auth.getUser();
+
+  if(data.user){
+    console.log("Logged in:", data.user.email);
+  } else {
+    console.log("Not logged in");
+  }
+}
+
+checkUser();
 /* =========================
    Event listeners
 ========================= */
