@@ -60,7 +60,11 @@
       overflow:hidden;
     }
 
-    .cardimg img { width:100%; height:100%; object-fit:cover; }
+    .cardimg img {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
 
     .cardfallback {
       font-size:20px;
@@ -99,7 +103,9 @@
 
     .btn { background:#f1f5f3; color:#111; }
     .btn:disabled { opacity:.45; cursor:not-allowed; }
+
     .btn-primary { background:var(--accent); color:#111; }
+
     .btn-ghost {
       background:rgba(255,255,255,0.10);
       color:var(--text);
@@ -110,8 +116,15 @@
     .good { color:var(--good); }
     .bad { color:var(--bad); }
 
-    .grid { display:grid; grid-template-columns:1fr; gap:12px; }
-    @media(min-width:860px){ .grid{grid-template-columns:1.05fr .95fr;} }
+    .grid {
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+
+    @media(min-width:860px){
+      .grid{grid-template-columns:1.05fr .95fr;}
+    }
 
     .sliders label {
       display:flex;
@@ -136,7 +149,12 @@
 
     .score { font-weight:900; }
 
-    .tabs { display:flex; gap:10px; flex-wrap:wrap; margin-top:10px; }
+    .tabs {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
 
     .tab {
       background:rgba(255,255,255,0.10);
@@ -366,12 +384,20 @@
 
 <script>
 /* =========================
-   Supabase
+   Safe Supabase init
 ========================= */
-const supabase = window.supabase.createClient(
-  "https://xhxkyongmcduyibhkwby.supabase.co",
-  "sb_publishable_DyyjT6peOtnrtt86U0AXTA_yZYvy-qc"
-);
+let supabaseClient = null;
+
+try {
+  if (window.supabase && typeof window.supabase.createClient === "function") {
+    supabaseClient = window.supabase.createClient(
+      "https://xhxkyongmcduyibhkwby.supabase.co",
+      "sb_publishable_DyyjT6peOtnrtt86U0AXTA_yZYvy-qc"
+    );
+  }
+} catch (err) {
+  console.error("Supabase init failed:", err);
+}
 
 /* =========================
    Core data
@@ -428,7 +454,7 @@ function actionName(a){
 }
 
 /* =========================
-   Basic Strategy
+   Basic strategy
 ========================= */
 function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
   const up = splitRank(rankOf(dealerUp));
@@ -626,7 +652,7 @@ function pickDeviationScenario(){
 }
 
 /* =========================
-   DOM references
+   DOM refs
 ========================= */
 const elDealer = document.getElementById("dealerHand");
 const elPlayer = document.getElementById("playerHand");
@@ -692,10 +718,8 @@ let state = {
   locked: false,
   correct: 0,
   total: 0,
-
   tc: 0,
   devScenario: null,
-
   insuranceNeeded: false,
   insuranceAnswered: false,
   insuranceUserAction: null,
@@ -763,7 +787,6 @@ function setLocked(locked){
 
   btnInsTake.disabled = !insuranceRelevant;
   btnInsNo.disabled = !insuranceRelevant;
-
   btnShow.disabled = false;
 }
 
@@ -836,7 +859,7 @@ function computeCorrectHandActionDeviation(){
 
   if (total === 16 && up === "9") {
     if (tc <= -1) return { correctAction: "H", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Hit.` };
-    if (tc >= 4)  return { correctAction: "S", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Stand.` };
+    if (tc >= 4) return { correctAction: "S", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Stand.` };
     return { correctAction: "R", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Surrender.` };
   }
 
@@ -987,50 +1010,67 @@ function showFacit(){
 }
 
 /* =========================
-   Auth
+   Auth helpers
 ========================= */
-async function signUp(){
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  if(!email || !password){
-    authStatus.textContent = "Enter email and password.";
-    return;
-  }
-
-  const { error } = await supabase.auth.signUp({ email, password });
-  authStatus.textContent = error ? error.message : "Signed up. Check your email if confirmation is enabled.";
-  await refreshAuthUI();
-}
-
-async function login(){
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
-
-  if(!email || !password){
-    authStatus.textContent = "Enter email and password.";
-    return;
-  }
-
-  const { error } = await supabase.auth.signInWithPassword({ email, password });
-  authStatus.textContent = error ? error.message : "Logged in.";
-  await refreshAuthUI();
-}
-
-async function logout(){
-  await supabase.auth.signOut();
-  authStatus.textContent = "Logged out.";
-  await refreshAuthUI();
-}
-
 async function getCurrentUser(){
-  const { data } = await supabase.auth.getUser();
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.auth.getUser();
+  if (error) return null;
   return data.user ?? null;
 }
 
 async function refreshAuthUI(){
   const user = await getCurrentUser();
   authUser.textContent = user ? `Logged in as ${user.email}` : "Not logged in";
+}
+
+async function signUp(){
+  if (!supabaseClient) {
+    authStatus.textContent = "Auth is unavailable right now.";
+    return;
+  }
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if(!email || !password){
+    authStatus.textContent = "Enter email and password.";
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signUp({ email, password });
+  authStatus.textContent = error ? error.message : "Signed up. Check your email if confirmation is enabled.";
+  await refreshAuthUI();
+}
+
+async function login(){
+  if (!supabaseClient) {
+    authStatus.textContent = "Auth is unavailable right now.";
+    return;
+  }
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if(!email || !password){
+    authStatus.textContent = "Enter email and password.";
+    return;
+  }
+
+  const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+  authStatus.textContent = error ? error.message : "Logged in.";
+  await refreshAuthUI();
+}
+
+async function logout(){
+  if (!supabaseClient) {
+    authStatus.textContent = "Auth is unavailable right now.";
+    return;
+  }
+
+  await supabaseClient.auth.signOut();
+  authStatus.textContent = "Logged out.";
+  await refreshAuthUI();
 }
 
 /* =========================
@@ -1055,19 +1095,24 @@ btnSignup.addEventListener("click", signUp);
 btnLogin.addEventListener("click", login);
 btnLogout.addEventListener("click", logout);
 
-authToggle.addEventListener("click", ()=>{
+authToggle.addEventListener("click", (e)=>{
+  e.stopPropagation();
   authDropdown.classList.toggle("open");
 });
 
-document.addEventListener("click", (e)=>{
-  if(!authDropdown.contains(e.target) && e.target !== authToggle){
-    authDropdown.classList.remove("open");
-  }
+authDropdown.addEventListener("click", (e)=>{
+  e.stopPropagation();
 });
 
-supabase.auth.onAuthStateChange(async ()=>{
-  await refreshAuthUI();
+document.addEventListener("click", ()=>{
+  authDropdown.classList.remove("open");
 });
+
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange(async ()=>{
+    await refreshAuthUI();
+  });
+}
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", async () => {
@@ -1075,6 +1120,9 @@ if("serviceWorker" in navigator){
   });
 }
 
+/* =========================
+   Boot
+========================= */
 refreshAuthUI();
 setMode("basic");
 </script>
