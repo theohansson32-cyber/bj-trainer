@@ -1083,10 +1083,27 @@ async function logout(){
     return;
   }
 
-  await supabaseClient.auth.signOut();
-  authStatus.textContent = "Logged out.";
-  authDropdown.classList.remove("open");
-  await refreshAuthUI();
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      authStatus.textContent = error.message;
+      return;
+    }
+
+    authStatus.textContent = "Logged out.";
+    authDropdown.classList.remove("open");
+
+    authUser.textContent = "Not logged in";
+    authBadge.textContent = "Not logged in";
+    authLoggedOutView.style.display = "block";
+    authLoggedInView.style.display = "none";
+    emailInput.value = "";
+    passwordInput.value = "";
+  } catch (err) {
+    authStatus.textContent = "Logout failed.";
+    console.error(err);
+  }
 }
 
 btnNew.addEventListener("click", newHand);
@@ -1122,11 +1139,15 @@ document.addEventListener("click", ()=>{
 });
 
 if (supabaseClient) {
-  supabaseClient.auth.onAuthStateChange(async ()=>{
+  supabaseClient.auth.onAuthStateChange(async (event) => {
     await refreshAuthUI();
+
+    if (event === "SIGNED_OUT") {
+      authStatus.textContent = "Logged out.";
+      authDropdown.classList.remove("open");
+    }
   });
 }
-
 if("serviceWorker" in navigator){
   window.addEventListener("load", async () => {
     try { await navigator.serviceWorker.register("sw.js"); } catch(e) {}
