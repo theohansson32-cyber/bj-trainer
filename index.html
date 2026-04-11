@@ -70,7 +70,7 @@
         <div class="row" style="margin-bottom:10px;">
           <div class="pill" id="meta">Kategori: — · Total: —</div>
           <div class="countBox" id="countBox" style="display:none;">
-            True Count: <span class="countNum" id="tc">+0</span>
+            True Count: <span class="countNum" id="tc">0</span>
           </div>
         </div>
 
@@ -129,7 +129,7 @@
           Dealer A ger två separata beslut: först insurance, sedan själva handen. Båda rättas separat innan rundan räknas klar.
         </div>
         <div class="small" style="margin-top:10px;">
-          True Count slumpas mellan <b>-7</b> och <b>+7</b>. Om index uppfylls gäller deviation, annars basic.
+          True Count slumpas mellan <b>-7</b> och <b>+7</b>. Om index uppfylls gäller deviation, annars basic eller surrender-grundspel för just den handen.
         </div>
       </div>
     </div>
@@ -303,19 +303,18 @@ function makeHardHand(total){
 }
 
 const DEVIATIONS = [
+  // Splits
   { cat:"Split", playerType:"pair", pair:"10", dealer:"4", dev:{op:">=", n:6}, action:"P", label:"TT vs 4: Split @ 6+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"5", dev:{op:">=", n:5}, action:"P", label:"TT vs 5: Split @ 5+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"6", dev:{op:">=", n:4}, action:"P", label:"TT vs 6: Split @ 4+" },
 
+  // Soft
   { cat:"Soft", playerType:"soft", soft:"A8", dealer:"4", dev:{op:">=", n:3}, action:"D", label:"A8 vs 4: Double @ 3+" },
   { cat:"Soft", playerType:"soft", soft:"A8", dealer:"5", dev:{op:">=", n:1}, action:"D", label:"A8 vs 5: Double @ 1+" },
   { cat:"Soft", playerType:"soft", soft:"A8", dealer:"6", dev:{op:">=", n:1}, action:"D", label:"A8 vs 6: Double @ 1+" },
   { cat:"Soft", playerType:"soft", soft:"A6", dealer:"2", dev:{op:">=", n:1}, action:"D", label:"A6 vs 2: Double @ 1+" },
 
-  { cat:"Hard", playerType:"hard", total:16, dealer:"9",  dev:{op:">=", n:4}, action:"S", label:"16 vs 9: Stand @ 4+" },
-  { cat:"Hard", playerType:"hard", total:16, dealer:"10", dev:{op:">=", n:0}, action:"S", label:"16 vs 10: Stand @ 0+" },
-  { cat:"Hard", playerType:"hard", total:16, dealer:"A",  dev:{op:">=", n:0}, action:"S", label:"16 vs A: Stand @ 0+" },
-  { cat:"Hard", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:4}, action:"S", label:"15 vs 10: Stand @ 4+" },
+  // Hard (non-surrender base)
   { cat:"Hard", playerType:"hard", total:13, dealer:"2",  dev:{op:"<=", n:-1}, action:"S", label:"13 vs 2: Stand @ -1 or lower" },
   { cat:"Hard", playerType:"hard", total:12, dealer:"2",  dev:{op:">=", n:3}, action:"S", label:"12 vs 2: Stand @ 3+" },
   { cat:"Hard", playerType:"hard", total:12, dealer:"3",  dev:{op:">=", n:2}, action:"S", label:"12 vs 3: Stand @ 2+" },
@@ -327,13 +326,17 @@ const DEVIATIONS = [
   { cat:"Hard", playerType:"hard", total:9,  dealer:"7",  dev:{op:">=", n:3}, action:"D", label:"9 vs 7: Double @ 3+" },
   { cat:"Hard", playerType:"hard", total:8,  dealer:"6",  dev:{op:">=", n:2}, action:"D", label:"8 vs 6: Double @ 2+" },
 
+  // Surrender-related deviations / branches
   { cat:"Surrender", playerType:"hard", total:16, dealer:"8",  dev:{op:">=", n:4}, action:"R", label:"16 vs 8: Surrender @ 4+" },
-  { cat:"Surrender", playerType:"hard", total:16, dealer:"9",  dev:{op:"<=", n:-1}, action:"R", label:"16 vs 9: Surrender @ -1 or lower" },
+  { cat:"Surrender", playerType:"hard", total:16, dealer:"9",  dev:{op:"<=", n:-1}, action:"H", label:"16 vs 9: Hit @ -1 or lower" },
+  { cat:"Surrender", playerType:"hard", total:16, dealer:"9",  dev:{op:">=", n:4}, action:"S", label:"16 vs 9: Stand @ 4+" },
   { cat:"Surrender", playerType:"hard", total:16, dealer:"10", dev:{op:"ALWAYS"}, action:"R", label:"16 vs 10: Surrender (always)" },
   { cat:"Surrender", playerType:"hard", total:16, dealer:"A",  dev:{op:"ALWAYS"}, action:"R", label:"16 vs A: Surrender (always)" },
-  { cat:"Surrender", playerType:"hard", total:15, dealer:"8",  dev:{op:">=", n:2}, action:"R", label:"15 vs 8: Surrender @ 2+" },
-  { cat:"Surrender", playerType:"hard", total:15, dealer:"9",  dev:{op:"<=", n:0}, action:"R", label:"15 vs 9: Surrender @ 0 or lower" },
-  { cat:"Surrender", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:2}, action:"R", label:"15 vs 10: Surrender @ 2+" },
+
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"9",  dev:{op:">=", n:2}, action:"R", label:"15 vs 9: Surrender @ 2+" },
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"10", dev:{op:"<=", n:0}, action:"H", label:"15 vs 10: Hit @ 0 or lower" },
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:4}, action:"S", label:"15 vs 10: Stand @ 4+" },
+  { cat:"Surrender", playerType:"hard", total:15, dealer:"A",  dev:{op:">=", n:2}, action:"R", label:"15 vs A: Surrender @ 2+" },
 ];
 
 const INSURANCE_INDEX = { op:">=", n:3 };
@@ -362,12 +365,7 @@ function pickDeviationScenario(){
     player = makeHardHand(dev.total);
   }
 
-  return {
-    tc,
-    dealerUp,
-    player,
-    dev
-  };
+  return { tc, dealerUp, player, dev };
 }
 
 /* =========================
@@ -552,23 +550,79 @@ function computeCorrectInsuranceAction(){
   return tcMeets(state.tc, INSURANCE_INDEX) ? "I" : "N";
 }
 
+function surrenderBaseAction(total, up){
+  // Grundsurrender i deviation-trainern enligt tabellen:
+  // 16 vs 9/10/A och 15 vs 10
+  if (total === 16 && ["9","10","A"].includes(up)) return "R";
+  if (total === 15 && up === "10") return "R";
+  return null;
+}
+
 function computeCorrectHandActionDeviation(){
+  const total = handValue(state.player).total;
+  const up = splitRank(rankOf(state.dealerUp));
+  const tc = state.tc;
+
+  // Specialfall: 16 vs 9
+  // <= -1 Hit, 0..3 Surrender, >= 4 Stand
+  if (total === 16 && up === "9") {
+    if (tc <= -1) {
+      return {
+        correctAction: "H",
+        why: `16 vs 9: vid TC ${tcToLabel(tc)} ska du Hit.`
+      };
+    }
+    if (tc >= 4) {
+      return {
+        correctAction: "S",
+        why: `16 vs 9: vid TC ${tcToLabel(tc)} ska du Stand.`
+      };
+    }
+    return {
+      correctAction: "R",
+      why: `16 vs 9: vid TC ${tcToLabel(tc)} ska du Surrender.`
+    };
+  }
+
+  // Specialfall: 15 vs 10
+  // <= 0 Hit, 1..3 Surrender, >= 4 Stand
+  if (total === 15 && up === "10") {
+    if (tc <= 0) {
+      return {
+        correctAction: "H",
+        why: `15 vs 10: vid TC ${tcToLabel(tc)} ska du Hit.`
+      };
+    }
+    if (tc >= 4) {
+      return {
+        correctAction: "S",
+        why: `15 vs 10: vid TC ${tcToLabel(tc)} ska du Stand.`
+      };
+    }
+    return {
+      correctAction: "R",
+      why: `15 vs 10: vid TC ${tcToLabel(tc)} ska du Surrender.`
+    };
+  }
+
   const dev = state.devScenario.dev;
   const canDoubleNow = state.player.length===2;
   const canSplitNow = state.player.length===2 && canSplit(state.player);
 
-  const base = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+  const surrenderBase = surrenderBaseAction(total, up);
+  const basicBase = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+  const base = surrenderBase ?? basicBase;
 
-  if(tcMeets(state.tc, dev.dev)){
+  if(tcMeets(tc, dev.dev)){
     return {
       correctAction: dev.action,
-      why: `${dev.label} (TC=${tcToLabel(state.tc)} uppfyller index) — deviation gäller.`
+      why: `${dev.label} (TC=${tcToLabel(tc)} uppfyller index) — deviation gäller.`
     };
   }
 
   return {
     correctAction: base,
-    why: `${dev.label} men TC=${tcToLabel(state.tc)} uppfyller inte index — då gäller basic: ${actionName(base)}.`
+    why: `${dev.label} men TC=${tcToLabel(tc)} uppfyller inte index — då gäller grundspelet här: ${actionName(base)}.`
   };
 }
 
