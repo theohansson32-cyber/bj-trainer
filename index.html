@@ -211,11 +211,22 @@
     #authToggle {
       background:var(--accent);
       color:#111;
-      border-radius:50%;
-      width:42px;
+      border-radius:999px;
       height:42px;
       font-size:18px;
-      padding:0;
+      padding:0 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    #authBadge {
+      font-size:14px;
+      font-weight:800;
+      max-width:180px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
     }
 
     .authDropdown {
@@ -251,10 +262,6 @@
       margin-bottom:8px;
     }
 
-    .authDropdown .authButtons button:last-child {
-      grid-column:1 / -1;
-    }
-
     #authStatus {
       margin:8px 0 0;
       font-size:12px;
@@ -274,16 +281,27 @@
   <div class="wrap">
 
     <div class="authMenu">
-      <button id="authToggle" title="Account">👤</button>
+      <button id="authToggle" title="Account">
+        <span>👤</span>
+        <span id="authBadge">Not logged in</span>
+      </button>
+
       <div id="authDropdown" class="authDropdown">
         <p id="authUser">Not logged in</p>
-        <input id="email" placeholder="Email" autocomplete="email">
-        <input id="password" type="password" placeholder="Password" autocomplete="current-password">
-        <div class="authButtons">
-          <button class="btn" id="btnSignup">Sign up</button>
-          <button class="btn" id="btnLogin">Login</button>
-          <button class="btn-ghost" id="btnLogout">Logout</button>
+
+        <div id="authLoggedOutView">
+          <input id="email" placeholder="Email" autocomplete="email">
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+          <div class="authButtons">
+            <button class="btn" id="btnSignup">Sign up</button>
+            <button class="btn" id="btnLogin">Login</button>
+          </div>
         </div>
+
+        <div id="authLoggedInView" style="display:none;">
+          <button class="btn-ghost" id="btnLogout" style="width:100%;">Log out</button>
+        </div>
+
         <p id="authStatus"></p>
       </div>
     </div>
@@ -383,9 +401,6 @@
   </div>
 
 <script>
-/* =========================
-   Safe Supabase init
-========================= */
 let supabaseClient = null;
 
 try {
@@ -399,9 +414,6 @@ try {
   console.error("Supabase init failed:", err);
 }
 
-/* =========================
-   Core data
-========================= */
 const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const SUITS = ["S","H","D","C"];
 const CARD_VALUES = { A:11, "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,J:10,Q:10,K:10 };
@@ -453,9 +465,6 @@ function actionName(a){
   })[a] ?? a;
 }
 
-/* =========================
-   Basic strategy
-========================= */
 function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
   const up = splitRank(rankOf(dealerUp));
 
@@ -511,9 +520,6 @@ function facitTextBasic(){
   return `Basic strategy: ${actionName(sug)}`;
 }
 
-/* =========================
-   Basic generators
-========================= */
 function genSoftHand(){
   return [randomCard("A"), randomCard(["2","3","4","5","6","7","8","9"][Math.floor(Math.random()*8)])];
 }
@@ -549,9 +555,6 @@ function pickTrainingHand(weights){
   return { player, dealerUp, cat };
 }
 
-/* =========================
-   Deviations
-========================= */
 function tcMeets(tc, cond){
   if(!cond || cond.op === "ALWAYS") return true;
   if(cond.op === ">=") return tc >= cond.n;
@@ -651,9 +654,6 @@ function pickDeviationScenario(){
   return { tc, dealerUp, player, dev };
 }
 
-/* =========================
-   DOM refs
-========================= */
 const elDealer = document.getElementById("dealerHand");
 const elPlayer = document.getElementById("playerHand");
 const elFeedback = document.getElementById("feedback");
@@ -692,15 +692,15 @@ const authToggle = document.getElementById("authToggle");
 const authDropdown = document.getElementById("authDropdown");
 const authStatus = document.getElementById("authStatus");
 const authUser = document.getElementById("authUser");
+const authBadge = document.getElementById("authBadge");
 const emailInput = document.getElementById("email");
 const passwordInput = document.getElementById("password");
+const authLoggedOutView = document.getElementById("authLoggedOutView");
+const authLoggedInView = document.getElementById("authLoggedInView");
 const btnSignup = document.getElementById("btnSignup");
 const btnLogin = document.getElementById("btnLogin");
 const btnLogout = document.getElementById("btnLogout");
 
-/* =========================
-   State
-========================= */
 function weights(){ return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value }; }
 function syncWeightLabels(){
   wHardVal.textContent = wHard.value;
@@ -1009,9 +1009,6 @@ function showFacit(){
   elFeedback.className = "feedback";
 }
 
-/* =========================
-   Auth helpers
-========================= */
 async function getCurrentUser(){
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient.auth.getUser();
@@ -1021,7 +1018,21 @@ async function getCurrentUser(){
 
 async function refreshAuthUI(){
   const user = await getCurrentUser();
-  authUser.textContent = user ? `Logged in as ${user.email}` : "Not logged in";
+
+  if (user) {
+    const label = user.email || "Logged in";
+    authUser.textContent = `Logged in as ${label}`;
+    authBadge.textContent = label;
+    authLoggedOutView.style.display = "none";
+    authLoggedInView.style.display = "block";
+  } else {
+    authUser.textContent = "Not logged in";
+    authBadge.textContent = "Not logged in";
+    authLoggedOutView.style.display = "block";
+    authLoggedInView.style.display = "none";
+    emailInput.value = "";
+    passwordInput.value = "";
+  }
 }
 
 async function signUp(){
@@ -1060,6 +1071,10 @@ async function login(){
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   authStatus.textContent = error ? error.message : "Logged in.";
   await refreshAuthUI();
+
+  if (!error) {
+    authDropdown.classList.remove("open");
+  }
 }
 
 async function logout(){
@@ -1070,12 +1085,10 @@ async function logout(){
 
   await supabaseClient.auth.signOut();
   authStatus.textContent = "Logged out.";
+  authDropdown.classList.remove("open");
   await refreshAuthUI();
 }
 
-/* =========================
-   Event listeners
-========================= */
 btnNew.addEventListener("click", newHand);
 btnShow.addEventListener("click", showFacit);
 
@@ -1120,9 +1133,6 @@ if("serviceWorker" in navigator){
   });
 }
 
-/* =========================
-   Boot
-========================= */
 refreshAuthUI();
 setMode("basic");
 </script>
