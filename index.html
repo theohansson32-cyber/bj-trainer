@@ -54,7 +54,7 @@
     <div class="topline">
       <div>
         <h1>Blackjack Trainer</h1>
-        <div class="pill">Regler: S17 · 6D · DAS · (Late surrender i deviation-läge)</div>
+        <div class="pill">Regler: S17 · 6D · DAS · Late surrender i deviations-läge</div>
         <div class="tabs">
           <button class="tab active" id="tabBasic">Basic</button>
           <button class="tab" id="tabDev">Deviations</button>
@@ -126,11 +126,10 @@
       <div class="cardpanel" id="devPanel" style="display:none;">
         <div class="sectiontitle">Deviations-läge</div>
         <div class="small">
-          Appen delar bara ut situationer där det finns deviations (inkl. surrender & insurance). True Count slumpas mellan <b>-7</b> och <b>+7</b>.
-          Du ska välja rätt beslut enligt deviation-tabellen; om index inte uppfylls gäller basic strategy. :contentReference[oaicite:2]{index=2}
+          Dealer A ger två separata beslut: först insurance, sedan själva handen. Båda rättas separat innan rundan räknas klar.
         </div>
         <div class="small" style="margin-top:10px;">
-          Tips: Insurance-knapparna är bara relevanta när dealer visar <b>A</b>.
+          True Count slumpas mellan <b>-7</b> och <b>+7</b>. Om index uppfylls gäller deviation, annars basic.
         </div>
       </div>
     </div>
@@ -147,7 +146,6 @@ const CARD_VALUES = { A:11, "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10"
 
 function splitRank(r){ return (["10","J","Q","K"].includes(r)) ? "10" : r; }
 function rankOf(card){ return card.slice(0, -1); }
-function suitOf(card){ return card.slice(-1); }
 
 function handValue(cards){
   const ranks = cards.map(rankOf);
@@ -178,19 +176,16 @@ function randomDealerUp(){
 function tcToLabel(n){
   if(n > 0) return `+${n}`;
   if(n < 0) return `${n}`;
-  return "+0";
+  return "0";
 }
 
 /* =========================
    Basic Strategy (S17, 6D, DAS, no surrender)
-   Returns: 'H','S','D','P'
-   (Fixar bl.a. A7 vs 2/3 = Ds och A7 vs 3 = Ds)
 ========================= */
 
 function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
   const up = splitRank(rankOf(dealerUp));
 
-  // Splits
   if(canSplitNow && canSplit(playerCards)){
     const pr = splitRank(rankOf(playerCards[0]));
     if(pr==="A") return "P";
@@ -206,7 +201,6 @@ function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
 
   const { total, soft } = handValue(playerCards);
 
-  // Soft
   if(soft){
     if(total <= 17){
       if(canDouble){
@@ -217,9 +211,7 @@ function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
       return "H";
     }
     if(total === 18){
-      // A7: Ds vs 2-6, S vs 7-8, H vs 9-A (S17)
-      if(canDouble && ["3","4","5","6"].includes(up)) return "D"; // Double on 3-6
-      if(["2"].includes(up)) return "S"; // some charts use Ds vs 2; we treat as stand in no-double scenario; handled via deviation/other
+      if(canDouble && ["3","4","5","6"].includes(up)) return "D";
       if(["2","7","8"].includes(up)) return "S";
       return "H";
     }
@@ -227,10 +219,9 @@ function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
       if(canDouble && up==="6") return "D";
       return "S";
     }
-    return "S"; // 20+
+    return "S";
   }
 
-  // Hard
   if(total <= 8) return "H";
   if(total === 9)  return (canDouble && ["3","4","5","6"].includes(up)) ? "D" : "H";
   if(total === 10) return (canDouble && ["2","3","4","5","6","7","8","9"].includes(up)) ? "D" : "H";
@@ -240,18 +231,15 @@ function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
   return "S";
 }
 
-/* =========================
-   Basic + "Ds" helper (for facit text)
-========================= */
-function basicStrategyVerbose(playerCards, dealerUp, canDouble, canSplitNow){
-  // This app only has H/S/D/P buttons in basic mode.
-  // We still return standard codes; "Ds" is represented as D if canDouble else S by chart,
-  // but our basicStrategy already returns D for some, and S/H for others.
-  return basicStrategy(playerCards, dealerUp, canDouble, canSplitNow);
+function facitTextBasic(){
+  const canDoubleNow = state.player.length===2;
+  const canSplitNow = state.player.length===2 && canSplit(state.player);
+  const sug = basicStrategy(state.player, state.dealerUp, canDoubleNow, canSplitNow);
+  return `Basic strategy: ${actionName(sug)}`;
 }
 
 /* =========================
-   Weighted BASIC scenario generator
+   Basic mode generators
 ========================= */
 
 function genSoftHand(){
@@ -270,6 +258,7 @@ function genHardHand(){
     if(total >= 5 && total <= 20) return [c1,c2];
   }
 }
+
 function pickTrainingHand(weights){
   const pool = [];
   for(let i=0;i<weights.hard;i++) pool.push("hard");
@@ -287,16 +276,10 @@ function pickTrainingHand(weights){
 }
 
 /* =========================
-   DEVIATIONS (S17) from your chart
-   Rule: if TC meets index condition => deviation action; else basic action.
-   Action codes:
-     H=Hit, S=Stand, D=Double, P=Split, R=Surrender
-   Insurance handled separately:
-     I=Take Insurance, N=No Insurance
+   Deviations
 ========================= */
 
 function tcMeets(tc, cond){
-  // cond like {op:">=", n:3} or {op:"<=", n:0} or {op:"ALWAYS"}
   if(!cond || cond.op === "ALWAYS") return true;
   if(cond.op === ">=") return tc >= cond.n;
   if(cond.op === "<=") return tc <= cond.n;
@@ -304,7 +287,6 @@ function tcMeets(tc, cond){
 }
 
 function makeHardHand(total){
-  // Deterministic 2-card hard totals that are not soft, not pairs when possible
   const presets = {
     8:  ["5","3"],
     9:  ["5","4"],
@@ -321,56 +303,75 @@ function makeHardHand(total){
 }
 
 const DEVIATIONS = [
-  // Splits: TT vs 4/5/6
   { cat:"Split", playerType:"pair", pair:"10", dealer:"4", dev:{op:">=", n:6}, action:"P", label:"TT vs 4: Split @ 6+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"5", dev:{op:">=", n:5}, action:"P", label:"TT vs 5: Split @ 5+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"6", dev:{op:">=", n:4}, action:"P", label:"TT vs 6: Split @ 4+" },
 
-  // Soft
   { cat:"Soft", playerType:"soft", soft:"A8", dealer:"4", dev:{op:">=", n:3}, action:"D", label:"A8 vs 4: Double @ 3+" },
   { cat:"Soft", playerType:"soft", soft:"A8", dealer:"5", dev:{op:">=", n:1}, action:"D", label:"A8 vs 5: Double @ 1+" },
   { cat:"Soft", playerType:"soft", soft:"A8", dealer:"6", dev:{op:">=", n:1}, action:"D", label:"A8 vs 6: Double @ 1+" },
   { cat:"Soft", playerType:"soft", soft:"A6", dealer:"2", dev:{op:">=", n:1}, action:"D", label:"A6 vs 2: Double @ 1+" },
 
-  // Hard
   { cat:"Hard", playerType:"hard", total:16, dealer:"9",  dev:{op:">=", n:4}, action:"S", label:"16 vs 9: Stand @ 4+" },
   { cat:"Hard", playerType:"hard", total:16, dealer:"10", dev:{op:">=", n:0}, action:"S", label:"16 vs 10: Stand @ 0+" },
   { cat:"Hard", playerType:"hard", total:16, dealer:"A",  dev:{op:">=", n:0}, action:"S", label:"16 vs A: Stand @ 0+" },
-
   { cat:"Hard", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:4}, action:"S", label:"15 vs 10: Stand @ 4+" },
-
   { cat:"Hard", playerType:"hard", total:13, dealer:"2",  dev:{op:"<=", n:-1}, action:"S", label:"13 vs 2: Stand @ -1 or lower" },
-
   { cat:"Hard", playerType:"hard", total:12, dealer:"2",  dev:{op:">=", n:3}, action:"S", label:"12 vs 2: Stand @ 3+" },
   { cat:"Hard", playerType:"hard", total:12, dealer:"3",  dev:{op:">=", n:2}, action:"S", label:"12 vs 3: Stand @ 2+" },
   { cat:"Hard", playerType:"hard", total:12, dealer:"4",  dev:{op:"<=", n:0}, action:"H", label:"12 vs 4: Hit @ 0 or lower" },
-
   { cat:"Hard", playerType:"hard", total:11, dealer:"A",  dev:{op:">=", n:1}, action:"D", label:"11 vs A: Double @ 1+" },
-
   { cat:"Hard", playerType:"hard", total:10, dealer:"10", dev:{op:">=", n:4}, action:"D", label:"10 vs 10: Double @ 4+" },
   { cat:"Hard", playerType:"hard", total:10, dealer:"A",  dev:{op:">=", n:4}, action:"D", label:"10 vs A: Double @ 4+" },
-
   { cat:"Hard", playerType:"hard", total:9,  dealer:"2",  dev:{op:">=", n:1}, action:"D", label:"9 vs 2: Double @ 1+" },
   { cat:"Hard", playerType:"hard", total:9,  dealer:"7",  dev:{op:">=", n:3}, action:"D", label:"9 vs 7: Double @ 3+" },
-
   { cat:"Hard", playerType:"hard", total:8,  dealer:"6",  dev:{op:">=", n:2}, action:"D", label:"8 vs 6: Double @ 2+" },
 
-  // Surrender (Late Surrender)
   { cat:"Surrender", playerType:"hard", total:16, dealer:"8",  dev:{op:">=", n:4}, action:"R", label:"16 vs 8: Surrender @ 4+" },
   { cat:"Surrender", playerType:"hard", total:16, dealer:"9",  dev:{op:"<=", n:-1}, action:"R", label:"16 vs 9: Surrender @ -1 or lower" },
   { cat:"Surrender", playerType:"hard", total:16, dealer:"10", dev:{op:"ALWAYS"}, action:"R", label:"16 vs 10: Surrender (always)" },
   { cat:"Surrender", playerType:"hard", total:16, dealer:"A",  dev:{op:"ALWAYS"}, action:"R", label:"16 vs A: Surrender (always)" },
-
   { cat:"Surrender", playerType:"hard", total:15, dealer:"8",  dev:{op:">=", n:2}, action:"R", label:"15 vs 8: Surrender @ 2+" },
   { cat:"Surrender", playerType:"hard", total:15, dealer:"9",  dev:{op:"<=", n:0}, action:"R", label:"15 vs 9: Surrender @ 0 or lower" },
   { cat:"Surrender", playerType:"hard", total:15, dealer:"10", dev:{op:">=", n:2}, action:"R", label:"15 vs 10: Surrender @ 2+" },
 ];
 
-// Insurance: take at 3+ (we’ll sometimes deal a dedicated insurance question)
 const INSURANCE_INDEX = { op:">=", n:3 };
 
+function pickDeviationScenario(){
+  const tc = Math.floor(Math.random()*15) - 7;
+  const dev = DEVIATIONS[Math.floor(Math.random()*DEVIATIONS.length)];
+  const dealerUp = randomCard(dev.dealer);
+
+  let player;
+  if(dev.playerType==="pair"){
+    if (dev.pair === "10") {
+      const tenVals = ["10","J","Q","K"];
+      player = [
+        randomCard(tenVals[Math.floor(Math.random()*tenVals.length)]),
+        randomCard(tenVals[Math.floor(Math.random()*tenVals.length)])
+      ];
+    } else {
+      player = [randomCard(dev.pair), randomCard(dev.pair)];
+    }
+  } else if(dev.playerType==="soft"){
+    if(dev.soft==="A8") player = [randomCard("A"), randomCard("8")];
+    else if(dev.soft==="A6") player = [randomCard("A"), randomCard("6")];
+    else player = [randomCard("A"), randomCard("7")];
+  } else {
+    player = makeHardHand(dev.total);
+  }
+
+  return {
+    tc,
+    dealerUp,
+    player,
+    dev
+  };
+}
+
 /* =========================
-   UI State
+   State / UI
 ========================= */
 
 const elDealer = document.getElementById("dealerHand");
@@ -465,7 +466,7 @@ function setMode(mode){
 
   elModeHint.textContent = (mode==="basic")
     ? "Basic-läge: feedback på första beslutet."
-    : "Deviations-läge: du får ett True Count (-7…+7). Om index uppfylls gör deviation, annars basic. Insurance endast när dealer visar A.";
+    : "Deviations-läge: om dealer visar A kan du behöva svara både på insurance och på handen.";
 
   newHand();
 }
@@ -514,62 +515,6 @@ function render(){
   updateScore();
 }
 
-function pickDeviationScenario(){
-  const tc = Math.floor(Math.random()*15) - 7; // -7..+7
-  const dev = DEVIATIONS[Math.floor(Math.random()*DEVIATIONS.length)];
-  const dealerUp = randomCard(dev.dealer);
-
-  let player;
-  if(dev.playerType==="pair"){
-    if (dev.pair === "10") {
-      const tenVals = ["10","J","Q","K"];
-      player = [
-        randomCard(tenVals[Math.floor(Math.random()*tenVals.length)]),
-        randomCard(tenVals[Math.floor(Math.random()*tenVals.length)])
-      ];
-    } else {
-      player = [randomCard(dev.pair), randomCard(dev.pair)];
-    }
-  } else if(dev.playerType==="soft"){
-    if(dev.soft==="A8") player = [randomCard("A"), randomCard("8")];
-    else if(dev.soft==="A6") player = [randomCard("A"), randomCard("6")];
-    else player = [randomCard("A"), randomCard("7")];
-  } else {
-    player = makeHardHand(dev.total);
-  }
-
-  return {
-    tc,
-    dealerUp,
-    player,
-    dev
-  };
-}
-  const dev = DEVIATIONS[Math.floor(Math.random()*DEVIATIONS.length)];
-  const dealerUp = randomCard(dev.dealer);
-
-  let player;
-  if(dev.playerType==="pair"){
-    player = [randomCard(dev.pair==="10" ? "10" : dev.pair), randomCard(dev.pair==="10" ? "K" : dev.pair)]; 
-    // NOTE: for TT we want both 10-value. We'll force both to 10-value:
-    player = [randomCard("10"), randomCard("K")]; // both 10-value => treated as TT for splitting
-  } else if(dev.playerType==="soft"){
-    if(dev.soft==="A8") player = [randomCard("A"), randomCard("8")];
-    else if(dev.soft==="A6") player = [randomCard("A"), randomCard("6")];
-    else player = [randomCard("A"), randomCard("7")];
-  } else {
-    player = makeHardHand(dev.total);
-  }
-
-  return {
-    type:"dev",
-    tc,
-    dealerUp,
-    player,
-    dev
-  };
-
-
 function newHand(){
   elFeedback.textContent = "Välj ett beslut.";
   elFeedback.className = "feedback";
@@ -595,7 +540,6 @@ function newHand(){
     state.tc = s.tc;
     state.devScenario = s;
     state.cat = s.dev.cat;
-
     state.insuranceNeeded = (splitRank(rankOf(state.dealerUp)) === "A");
   }
 
@@ -603,12 +547,6 @@ function newHand(){
   render();
 }
 
-function facitTextBasic(){
-  const canDoubleNow = state.player.length===2;
-  const canSplitNow = state.player.length===2 && canSplit(state.player);
-  const sug = basicStrategyVerbose(state.player, state.dealerUp, canDoubleNow, canSplitNow);
-  return `Basic strategy: ${actionName(sug)}`;
-}
 function computeCorrectInsuranceAction(){
   if (!state.insuranceNeeded) return null;
   return tcMeets(state.tc, INSURANCE_INDEX) ? "I" : "N";
@@ -632,6 +570,64 @@ function computeCorrectHandActionDeviation(){
     correctAction: base,
     why: `${dev.label} men TC=${tcToLabel(state.tc)} uppfyller inte index — då gäller basic: ${actionName(base)}.`
   };
+}
+
+function checkRoundComplete(){
+  const insuranceDone = !state.insuranceNeeded || state.insuranceAnswered;
+  const handDone = state.handAnswered;
+
+  if(state.mode !== "dev") return;
+
+  if(insuranceDone && handDone){
+    let roundCorrect = true;
+
+    if(state.insuranceNeeded){
+      const insuranceCorrect = computeCorrectInsuranceAction();
+      if(state.insuranceUserAction !== insuranceCorrect){
+        roundCorrect = false;
+      }
+    }
+
+    const handCorrect = computeCorrectHandActionDeviation().correctAction;
+    if(state.handUserAction !== handCorrect){
+      roundCorrect = false;
+    }
+
+    state.total += 1;
+    if(roundCorrect) state.correct += 1;
+
+    state.locked = true;
+
+    const summary = [];
+    if(state.insuranceNeeded){
+      summary.push(`Insurance: du valde ${actionName(state.insuranceUserAction)}, rätt är ${actionName(computeCorrectInsuranceAction())}`);
+    }
+    summary.push(`Hand: du valde ${actionName(state.handUserAction)}, rätt är ${actionName(computeCorrectHandActionDeviation().correctAction)}`);
+
+    elFeedback.textContent += ` | Slutresultat: ${roundCorrect ? "✅ Helt rätt" : "❌ Inte helt rätt"} — ${summary.join(" · ")}`;
+    elFeedback.className = roundCorrect ? "feedback good" : "feedback bad";
+
+    render();
+  }
+}
+
+function chooseInsurance(action){
+  if(state.mode !== "dev" || state.locked || !state.insuranceNeeded || state.insuranceAnswered) return;
+
+  const correct = computeCorrectInsuranceAction();
+  state.insuranceAnswered = true;
+  state.insuranceUserAction = action;
+
+  if(action === correct){
+    elFeedback.textContent = `✅ Insurance rätt: ${actionName(correct)}. Välj nu handens beslut.`;
+    elFeedback.className = "feedback good";
+  } else {
+    elFeedback.textContent = `❌ Insurance fel. Rätt är: ${actionName(correct)}. Välj nu handens beslut.`;
+    elFeedback.className = "feedback bad";
+  }
+
+  checkRoundComplete();
+  setLocked(false);
 }
 
 function choose(action){
@@ -675,64 +671,6 @@ function choose(action){
   setLocked(false);
 }
 
-function chooseInsurance(action){
-  if(state.mode !== "dev" || state.locked || !state.insuranceNeeded || state.insuranceAnswered) return;
-
-  const correct = computeCorrectInsuranceAction();
-  state.insuranceAnswered = true;
-  state.insuranceUserAction = action;
-
-  if(action === correct){
-    elFeedback.textContent = `✅ Insurance rätt: ${actionName(correct)}. Välj nu handens beslut.`;
-    elFeedback.className = "feedback good";
-  } else {
-    elFeedback.textContent = `❌ Insurance fel. Rätt är: ${actionName(correct)}. Välj nu handens beslut.`;
-    elFeedback.className = "feedback bad";
-  }
-
-  checkRoundComplete();
-  setLocked(false);
-}
-
-function checkRoundComplete(){
-  const insuranceDone = !state.insuranceNeeded || state.insuranceAnswered;
-  const handDone = state.handAnswered;
-
-  if(state.mode !== "dev") return;
-
-  if(insuranceDone && handDone){
-    let roundCorrect = true;
-
-    if(state.insuranceNeeded){
-      const insuranceCorrect = computeCorrectInsuranceAction();
-      if(state.insuranceUserAction !== insuranceCorrect){
-        roundCorrect = false;
-      }
-    }
-
-    const handCorrect = computeCorrectHandActionDeviation().correctAction;
-    if(state.handUserAction !== handCorrect){
-      roundCorrect = false;
-    }
-
-    state.total += 1;
-    if(roundCorrect) state.correct += 1;
-
-    state.locked = true;
-
-    let summary = [];
-    if(state.insuranceNeeded){
-      summary.push(`Insurance: du valde ${actionName(state.insuranceUserAction)}, rätt är ${actionName(computeCorrectInsuranceAction())}`);
-    }
-    summary.push(`Hand: du valde ${actionName(state.handUserAction)}, rätt är ${actionName(computeCorrectHandActionDeviation().correctAction)}`);
-
-    elFeedback.textContent += ` | Slutresultat: ${roundCorrect ? "✅ Helt rätt" : "❌ Inte helt rätt"} — ${summary.join(" · ")}`;
-    elFeedback.className = roundCorrect ? "feedback good" : "feedback bad";
-
-    render();
-  }
-}
-
 function showFacit(){
   if(state.mode === "basic"){
     elFeedback.textContent = facitTextBasic();
@@ -743,7 +681,7 @@ function showFacit(){
   const handRes = computeCorrectHandActionDeviation();
   const insuranceRes = state.insuranceNeeded ? computeCorrectInsuranceAction() : null;
 
-  let parts = [];
+  const parts = [];
   if(insuranceRes){
     parts.push(`Insurance: ${actionName(insuranceRes)}`);
   }
@@ -770,7 +708,6 @@ btnInsNo.addEventListener("click", ()=>chooseInsurance("N"));
 tabBasic.addEventListener("click", ()=>setMode("basic"));
 tabDev.addEventListener("click", ()=>setMode("dev"));
 
-/* PWA: register service worker */
 if("serviceWorker" in navigator){
   window.addEventListener("load", async () => {
     try { await navigator.serviceWorker.register("sw.js"); } catch(e) {}
