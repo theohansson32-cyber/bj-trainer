@@ -309,7 +309,7 @@
         <div class="pill">Rules: S17 · 6D · DAS · Late surrender in deviation mode</div>
         <div class="tabs">
           <button class="tab active" id="tabBasic">Basic</button>
-          <button class="tab" id="tabDev">Deviations</button>
+          <button class="tab" id="tabDev">Deviations 🔒</button>
         </div>
       </div>
       <div class="score" id="score">Score: 0/0 (0.0%)</div>
@@ -1024,9 +1024,9 @@ async function getCurrentSession(){
   return data.session ?? null;
 }
 
-async function getCurrentUser(){
+async function isLoggedIn(){
   const session = await getCurrentSession();
-  return session?.user ?? null;
+  return !!session?.user;
 }
 
 function applyLoggedOutUI(){
@@ -1036,6 +1036,10 @@ function applyLoggedOutUI(){
   authLoggedInView.style.display = "none";
   emailInput.value = "";
   passwordInput.value = "";
+
+  if (state.mode === "dev") {
+    setMode("basic");
+  }
 }
 
 function applyLoggedInUI(user){
@@ -1143,7 +1147,18 @@ btnInsTake.addEventListener("click", ()=>chooseInsurance("I"));
 btnInsNo.addEventListener("click", ()=>chooseInsurance("N"));
 
 tabBasic.addEventListener("click", ()=>setMode("basic"));
-tabDev.addEventListener("click", ()=>setMode("dev"));
+
+tabDev.addEventListener("click", async ()=>{
+  const loggedIn = await isLoggedIn();
+
+  if (!loggedIn) {
+    authStatus.textContent = "Log in to use Deviations.";
+    authDropdown.classList.add("open");
+    return;
+  }
+
+  setMode("dev");
+});
 
 btnSignup.addEventListener("click", signUp);
 btnLogin.addEventListener("click", login);
