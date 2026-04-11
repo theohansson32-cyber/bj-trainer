@@ -196,6 +196,21 @@ function tcToLabel(n){
   return "0";
 }
 
+function actionName(a){
+  return ({
+    H:"Hit",
+    S:"Stand",
+    D:"Double",
+    P:"Split",
+    R:"Surrender",
+    I:"Insurance: Take",
+    N:"Insurance: No"
+  })[a] ?? a;
+}
+
+/* =========================
+   Basic Strategy (S17, 6D, DAS, no surrender)
+========================= */
 function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
   const up = splitRank(rankOf(dealerUp));
 
@@ -251,13 +266,18 @@ function facitTextBasic(){
   return `Basic strategy: ${actionName(sug)}`;
 }
 
+/* =========================
+   Basic mode generators
+========================= */
 function genSoftHand(){
   return [randomCard("A"), randomCard(["2","3","4","5","6","7","8","9"][Math.floor(Math.random()*8)])];
 }
+
 function genPairHand(){
   const r = RANKS[Math.floor(Math.random()*RANKS.length)];
   return [randomCard(r), randomCard(r)];
 }
+
 function genHardHand(){
   while(true){
     const c1 = randomCard(["2","3","4","5","6","7","8","9","10","J","Q","K"][Math.floor(Math.random()*12)]);
@@ -284,6 +304,9 @@ function pickTrainingHand(weights){
   return { player, dealerUp, cat };
 }
 
+/* =========================
+   Deviations
+========================= */
 function tcMeets(tc, cond){
   if(!cond || cond.op === "ALWAYS") return true;
   if(cond.op === ">=") return tc >= cond.n;
@@ -307,15 +330,17 @@ function makeHardHand(total){
   return [randomCard(r[0]), randomCard(r[1])];
 }
 
+// Only hands that actually need a TC-based decision live here.
+// Always-surrender spots like 16 vs 10 / A are handled in baseline.
 const DEVIATIONS = [
   { cat:"Split", playerType:"pair", pair:"10", dealer:"4", dev:{op:">=", n:6}, action:"P", label:"TT vs 4: Split @ 6+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"5", dev:{op:">=", n:5}, action:"P", label:"TT vs 5: Split @ 5+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"6", dev:{op:">=", n:4}, action:"P", label:"TT vs 6: Split @ 4+" },
 
-  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"4", dev:{op:">=", n:3}, action:"D", label:"A8 vs 4: Double @ 3+" },
-  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"5", dev:{op:">=", n:1}, action:"D", label:"A8 vs 5: Double @ 1+" },
-  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"6", dev:{op:">=", n:1}, action:"D", label:"A8 vs 6: Double @ 1+" },
-  { cat:"Soft", playerType:"soft", soft:"A6", dealer:"2", dev:{op:">=", n:1}, action:"D", label:"A6 vs 2: Double @ 1+" },
+  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"4", dev:{op:">=", n:3}, action:"D", label:"A,8 vs 4: Double @ 3+" },
+  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"5", dev:{op:">=", n:1}, action:"D", label:"A,8 vs 5: Double @ 1+" },
+  { cat:"Soft", playerType:"soft", soft:"A8", dealer:"6", dev:{op:">=", n:1}, action:"D", label:"A,8 vs 6: Double @ 1+" },
+  { cat:"Soft", playerType:"soft", soft:"A6", dealer:"2", dev:{op:">=", n:1}, action:"D", label:"A,6 vs 2: Double @ 1+" },
 
   { cat:"Hard", playerType:"hard", total:13, dealer:"2",  dev:{op:"<=", n:-1}, action:"S", label:"13 vs 2: Stand @ -1 or lower" },
   { cat:"Hard", playerType:"hard", total:12, dealer:"2",  dev:{op:">=", n:3}, action:"S", label:"12 vs 2: Stand @ 3+" },
@@ -388,6 +413,9 @@ function pickDeviationScenario(){
   return { tc, dealerUp, player, dev };
 }
 
+/* =========================
+   DOM references
+========================= */
 const elDealer = document.getElementById("dealerHand");
 const elPlayer = document.getElementById("playerHand");
 const elFeedback = document.getElementById("feedback");
@@ -422,8 +450,15 @@ const wPairVal = document.getElementById("wPairVal");
 
 const tcBias = document.getElementById("tcBias");
 
+/* =========================
+   State
+========================= */
 function weights(){ return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value }; }
-function syncWeightLabels(){ wHardVal.textContent=wHard.value; wSoftVal.textContent=wSoft.value; wPairVal.textContent=wPair.value; }
+function syncWeightLabels(){
+  wHardVal.textContent = wHard.value;
+  wSoftVal.textContent = wSoft.value;
+  wPairVal.textContent = wPair.value;
+}
 [wHard,wSoft,wPair].forEach(r => r.addEventListener("input", syncWeightLabels));
 syncWeightLabels();
 
@@ -445,10 +480,6 @@ let state = {
   handAnswered: false,
   handUserAction: null,
 };
-
-function actionName(a){
-  return ({H:"Hit",S:"Stand",D:"Double",P:"Split",R:"Surrender",I:"Insurance: Take",N:"Insurance: No"})[a] ?? a;
-}
 
 function renderCard(container, code){
   const div = document.createElement("div");
@@ -569,13 +600,16 @@ function computeCorrectInsuranceAction(){
 }
 
 function surrenderBaseAction(total, up){
+  // Surrender baselines from the chart logic
   if (total === 16 && ["9","10","A"].includes(up)) return "R";
   if (total === 15 && up === "10") return "R";
   return null;
 }
 
 function computeCorrectHandActionDeviation(){
-  const total = handValue(state.player).total;
+  const hv = handValue(state.player);
+  const total = hv.total;
+  const soft = hv.soft;
   const up = splitRank(rankOf(state.dealerUp));
   const tc = state.tc;
 
@@ -622,13 +656,13 @@ function computeCorrectHandActionDeviation(){
     return {
       correctAction: "R",
       why: `15 vs 10: at TC ${tcToLabel(tc)} you should Surrender.`
-    };
+      };
   }
 
   // A,8 vs 6:
   // TC < +1 -> Stand
   // TC >= +1 -> Double
-  if (total === 19 && handValue(state.player).soft && up === "6") {
+  if (soft && total === 19 && up === "6") {
     if (tc >= 1) {
       return {
         correctAction: "D",
@@ -782,18 +816,9 @@ function showFacit(){
   elFeedback.className = "feedback";
 }
 
-const tabBasic = document.getElementById("tabBasic");
-const tabDev = document.getElementById("tabDev");
-const btnHit = document.getElementById("btnHit");
-const btnStand = document.getElementById("btnStand");
-const btnDouble = document.getElementById("btnDouble");
-const btnSplit = document.getElementById("btnSplit");
-const btnSurrender = document.getElementById("btnSurrender");
-const btnInsTake = document.getElementById("btnInsTake");
-const btnInsNo = document.getElementById("btnInsNo");
-const btnNew = document.getElementById("btnNew");
-const btnShow = document.getElementById("btnShow");
-
+/* =========================
+   Event listeners
+========================= */
 btnNew.addEventListener("click", newHand);
 btnShow.addEventListener("click", showFacit);
 
