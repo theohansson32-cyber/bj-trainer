@@ -2,7 +2,7 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 import Stripe from "npm:stripe@17";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY")!, {
-  apiVersion: "2024-11-20",
+  apiVersion: "2023-10-16",
 });
 
 const corsHeaders = {
