@@ -396,50 +396,50 @@
       </div>
     </div>
   </div>
-  
-<div id="welcomeOverlay" style="
-  display:none;
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.55);
-  z-index:1000;
-  align-items:center;
-  justify-content:center;
-  padding:20px;
-">
-  <div style="
-    width:min(460px, 100%);
-    background:var(--panel);
-    border:1px solid rgba(255,255,255,0.14);
-    border-radius:18px;
-    padding:22px;
-    box-shadow:0 20px 50px rgba(0,0,0,0.35);
-  ">
-    <h2 style="margin:0 0 10px; font-size:24px;">Your account has been created</h2>
-    <p style="margin:0 0 16px; color:var(--muted);">
-      You are now logged in. Continue to Basic mode, or upgrade to unlock Deviation Drill.
-    </p>
 
+  <div id="welcomeOverlay" style="
+    display:none;
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.55);
+    z-index:1000;
+    align-items:center;
+    justify-content:center;
+    padding:20px;
+  ">
     <div style="
-      background:rgba(255,255,255,0.06);
-      border:1px solid rgba(255,255,255,0.10);
-      border-radius:14px;
-      padding:14px;
-      margin-bottom:16px;
+      width:min(460px, 100%);
+      background:var(--panel);
+      border:1px solid rgba(255,255,255,0.14);
+      border-radius:18px;
+      padding:22px;
+      box-shadow:0 20px 50px rgba(0,0,0,0.35);
     ">
-      <div style="font-weight:800; margin-bottom:6px;">Premium</div>
-      <div class="small" style="font-size:14px;">
-        To unlock Deviation Drill, get Premium.
+      <h2 style="margin:0 0 10px; font-size:24px;">Your account has been created</h2>
+      <p style="margin:0 0 16px; color:var(--muted);">
+        You are now logged in. Continue to Basic mode, or upgrade to unlock Deviation Drill.
+      </p>
+
+      <div style="
+        background:rgba(255,255,255,0.06);
+        border:1px solid rgba(255,255,255,0.10);
+        border-radius:14px;
+        padding:14px;
+        margin-bottom:16px;
+      ">
+        <div style="font-weight:800; margin-bottom:6px;">Premium</div>
+        <div class="small" style="font-size:14px;">
+          To unlock Deviation Drill, get Premium.
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button id="btnContinueAfterSignup" class="btn" style="flex:1;">Continue</button>
+        <button id="btnGetPremium" class="btn-primary" style="flex:1;">Get Premium</button>
       </div>
     </div>
-
-    <div style="display:flex; gap:10px; flex-wrap:wrap;">
-      <button id="btnContinueAfterSignup" class="btn" style="flex:1;">Continue</button>
-      <button id="btnGetPremium" class="btn-primary" style="flex:1;">Get Premium</button>
-    </div>
   </div>
-</div>
-  
+
 <script>
 let supabaseClient = null;
 
@@ -752,7 +752,6 @@ const welcomeOverlay = document.getElementById("welcomeOverlay");
 const btnContinueAfterSignup = document.getElementById("btnContinueAfterSignup");
 const btnGetPremium = document.getElementById("btnGetPremium");
 
-
 function weights(){ return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value }; }
 function syncWeightLabels(){
   wHardVal.textContent = wHard.value;
@@ -778,10 +777,10 @@ let state = {
   handAnswered: false,
   handUserAction: null,
 };
-  
+
 let userProfile = null;
 let isPremiumUser = false;
-  
+
 function updateDeviationTabLock(){
   updateDeviationAccessUI();
 }
@@ -1086,9 +1085,15 @@ async function showPremiumSuccessIfNeeded(){
     return;
   }
 
-  for (let i = 0; i < 8; i++) {
+  for (let i = 0; i < 10; i++) {
     await loadUserProfile();
     updateDeviationTabLock();
+
+    console.log("Premium poll", i + 1, {
+      userId: user.id,
+      isPremiumUser,
+      userProfile
+    });
 
     if (isPremiumUser) {
       authStatus.textContent = "Payment successful. Premium activated.";
@@ -1098,10 +1103,7 @@ async function showPremiumSuccessIfNeeded(){
       url.searchParams.delete("session_id");
       window.history.replaceState({}, "", url.toString());
 
-      if (welcomeOverlay && welcomeOverlay.style.display === "flex") {
-        hideWelcomeOverlay();
-      }
-
+      hideWelcomeOverlay();
       return;
     }
 
@@ -1168,7 +1170,7 @@ function updateDeviationAccessUI(){
 
   tabDev.textContent = isPremiumUser ? "Deviations 🔓" : "Deviations 🔒";
 }
-  
+
 async function getCurrentSession(){
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient.auth.getSession();
@@ -1209,7 +1211,7 @@ function applyLoggedInUI(user){
   authBadge.textContent = label;
   authLoggedOutView.style.display = "none";
   authLoggedInView.style.display = "block";
-  updateDeviationTabLock(true);
+  updateDeviationTabLock();
 }
 
 async function refreshAuthUI(){
@@ -1255,7 +1257,7 @@ async function signUp(){
 
   await refreshAuthUI();
 }
-  
+
 async function login(){
   if (!supabaseClient) {
     authStatus.textContent = "Auth is unavailable right now.";
@@ -1279,6 +1281,8 @@ async function login(){
 
   if (data?.user) {
     applyLoggedInUI(data.user);
+    await loadUserProfile();
+    updateDeviationTabLock();
   } else {
     await refreshAuthUI();
   }
@@ -1371,7 +1375,7 @@ btnContinueAfterSignup.addEventListener("click", ()=>{
 btnGetPremium.addEventListener("click", ()=>{
   window.location.href = "/premium.html";
 });
-  
+
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT" || !session) {
@@ -1386,7 +1390,7 @@ if (supabaseClient) {
       loadUserProfile().then(() => {
         updateDeviationTabLock();
 
-        if (shouldShowWelcomeScreen()) {
+        if (shouldShowWelcomeScreen() && !isPremiumUser) {
           showWelcomeOverlay();
         }
       });
@@ -1398,15 +1402,25 @@ if (supabaseClient) {
   });
 }
 
-if("serviceWorker" in navigator){
+if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
-    try { await navigator.serviceWorker.register("sw.js"); } catch(e) {}
+    try {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        await reg.unregister();
+      }
+      console.log("Service workers removed");
+    } catch (e) {
+      console.error("Failed to remove service workers:", e);
+    }
   });
 }
 
 (async function boot(){
   await refreshAuthUI();
   await showPremiumSuccessIfNeeded();
+  await loadUserProfile();
+  updateDeviationTabLock();
 
   if ((await isLoggedIn()) && shouldShowWelcomeScreen() && !isPremiumUser) {
     showWelcomeOverlay();
@@ -1416,7 +1430,6 @@ if("serviceWorker" in navigator){
 
   setMode("basic");
 })();
-  
 </script>
 </body>
 </html>
