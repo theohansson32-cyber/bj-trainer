@@ -35,10 +35,10 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "").trim();
 
-    const supabase = createClient(
-      Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SB_PUBLISHABLE_KEY")!
-    );
+   const supabase = createClient(
+  Deno.env.get("SUPABASE_URL")!,
+  Deno.env.get("SB_PUBLISHABLE_KEY")!
+);
 
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
 
