@@ -3,93 +3,217 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="theme-color" content="#0b3d2e" />
   <title>Get Premium</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: #0b3d2e;
-      color: #eef7f2;
-      display: grid;
-      place-items: center;
-      min-height: 100vh;
-    }
-    .card {
-      width: min(520px, calc(100% - 32px));
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 20px;
-      padding: 24px;
-    }
-    h1 { margin-top: 0; }
-    .price { font-size: 32px; font-weight: 900; margin: 12px 0; }
-    .muted { color: #b9d6c8; }
-    button {
-      border: 0;
-      border-radius: 14px;
-      padding: 14px 18px;
-      font-weight: 800;
-      cursor: pointer;
-      background: #ffd43b;
-      color: #111;
-      width: 100%;
-      margin-top: 16px;
-    }
-    #status {
-      margin-top: 12px;
-      color: #b9d6c8;
-      min-height: 20px;
-    }
-  </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    :root {
+      --bg:#0b3d2e;
+      --panel:#0e4b38;
+      --text:#eef7f2;
+      --muted:#b9d6c8;
+      --accent:#ffd43b;
+      --bad:#ff6b6b;
+      --good:#51cf66;
+    }
+
+    * { box-sizing:border-box; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      background:radial-gradient(1200px 600px at 50% -100px, #146a50, var(--bg));
+      color:var(--text);
+      display:grid;
+      place-items:center;
+      padding:16px;
+    }
+
+    .card {
+      width:min(560px, 100%);
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:20px;
+      padding:24px;
+      box-shadow:0 16px 40px rgba(0,0,0,0.28);
+    }
+
+    h1 {
+      margin:0 0 10px;
+      font-size:30px;
+    }
+
+    .muted {
+      color:var(--muted);
+      line-height:1.5;
+    }
+
+    .price {
+      font-size:42px;
+      font-weight:900;
+      margin:16px 0 6px;
+    }
+
+    .sub {
+      color:var(--muted);
+      margin-bottom:18px;
+    }
+
+    .box {
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:16px;
+      padding:16px;
+      margin:18px 0;
+    }
+
+    .row {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:18px;
+    }
+
+    button, a.buttonLike {
+      border:0;
+      border-radius:14px;
+      padding:14px 16px;
+      font-weight:800;
+      font-size:15px;
+      cursor:pointer;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .btnPrimary {
+      background:var(--accent);
+      color:#111;
+      flex:1;
+    }
+
+    .btnGhost {
+      background:rgba(255,255,255,0.10);
+      color:var(--text);
+      border:1px solid rgba(255,255,255,0.14);
+      flex:1;
+    }
+
+    #status {
+      min-height:22px;
+      margin-top:14px;
+      color:var(--muted);
+      font-size:14px;
+    }
+
+    .ok { color:var(--good) !important; }
+    .bad { color:var(--bad) !important; }
+
+    ul {
+      margin:10px 0 0 18px;
+      padding:0;
+      color:var(--muted);
+    }
+
+    li { margin:6px 0; }
+  </style>
 </head>
 <body>
   <div class="card">
     <h1>Unlock Premium</h1>
-    <p class="muted">Get access to Deviation Drill.</p>
+    <div class="muted">Get access to Deviation Drill in Blackjack Trainer.</div>
+
     <div class="price">$9</div>
-    <p class="muted">One-time purchase. Premium unlocks Deviations in the trainer.</p>
-    <button id="buyBtn">Get Premium</button>
+    <div class="sub">One-time purchase</div>
+
+    <div class="box">
+      <strong>Included</strong>
+      <ul>
+        <li>Deviation Drill unlocked</li>
+        <li>Premium account flag tied to your login</li>
+        <li>Works across refresh and future logins</li>
+      </ul>
+    </div>
+
+    <div class="row">
+      <button id="buyBtn" class="btnPrimary">Get Premium</button>
+      <a href="/" class="buttonLike btnGhost">Back</a>
+    </div>
+
     <div id="status"></div>
   </div>
 
   <script>
     const supabaseClient = window.supabase.createClient(
       "https://xhxkyongmcduyibhkwby.supabase.co",
-      "DIN_ANON_KEY"
+      "sb_publishable_DyyjT6peOtnrtt86U0AXTA_yZYvy-qc",
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storageKey: "bj-trainer-auth"
+        }
+      }
     );
 
     const buyBtn = document.getElementById("buyBtn");
     const statusEl = document.getElementById("status");
 
-    buyBtn.addEventListener("click", async () => {
-      statusEl.textContent = "Starting checkout...";
+    function setStatus(message, cls = "") {
+      statusEl.textContent = message;
+      statusEl.className = cls;
+    }
 
-      const { data: sessionData } = await supabaseClient.auth.getSession();
-      const accessToken = sessionData?.session?.access_token;
+    async function startCheckout() {
+      setStatus("Starting checkout...");
 
-      if (!accessToken) {
-        statusEl.textContent = "You need to be logged in first.";
+      const { data, error } = await supabaseClient.auth.getSession();
+      if (error || !data?.session?.access_token) {
+        setStatus("You need to be logged in first.", "bad");
         return;
       }
 
-      const res = await fetch("https://YOUR_PROJECT_REF.supabase.co/functions/v1/create-checkout", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${accessToken}`
+      const accessToken = data.session.access_token;
+
+      try {
+        const res = await fetch(
+          "https://xhxkyongmcduyibhkwby.supabase.co/functions/v1/create-checkout",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${accessToken}`
+            }
+          }
+        );
+
+        const json = await res.json();
+
+        if (!res.ok) {
+          setStatus(json.error || "Could not start checkout.", "bad");
+          return;
         }
-      });
 
-      const data = await res.json();
+        if (!json.url) {
+          setStatus("Checkout URL missing.", "bad");
+          return;
+        }
 
-      if (!res.ok) {
-        statusEl.textContent = data.error || "Could not start checkout.";
-        return;
+        window.location.href = json.url;
+      } catch (err) {
+        console.error(err);
+        setStatus("Could not connect to checkout.", "bad");
       }
+    }
 
-      window.location.href = data.url;
-    });
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("canceled") === "1") {
+      setStatus("Checkout canceled.", "bad");
+    }
+
+    buyBtn.addEventListener("click", startCheckout);
   </script>
 </body>
 </html>
