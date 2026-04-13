@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Get Premium</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      background: #0b3d2e;
+      color: #eef7f2;
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+    }
+    .card {
+      width: min(520px, calc(100% - 32px));
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 20px;
+      padding: 24px;
+    }
+    h1 { margin-top: 0; }
+    .price { font-size: 32px; font-weight: 900; margin: 12px 0; }
+    .muted { color: #b9d6c8; }
+    button {
+      border: 0;
+      border-radius: 14px;
+      padding: 14px 18px;
+      font-weight: 800;
+      cursor: pointer;
+      background: #ffd43b;
+      color: #111;
+      width: 100%;
+      margin-top: 16px;
+    }
+    #status {
+      margin-top: 12px;
+      color: #b9d6c8;
+      min-height: 20px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <div class="card">
+    <h1>Unlock Premium</h1>
+    <p class="muted">Get access to Deviation Drill.</p>
+    <div class="price">$9</div>
+    <p class="muted">One-time purchase. Premium unlocks Deviations in the trainer.</p>
+    <button id="buyBtn">Get Premium</button>
+    <div id="status"></div>
+  </div>
+
+  <script>
+    const supabaseClient = window.supabase.createClient(
+      "https://xhxkyongmcduyibhkwby.supabase.co",
+      "DIN_ANON_KEY"
+    );
+
+    const buyBtn = document.getElementById("buyBtn");
+    const statusEl = document.getElementById("status");
+
+    buyBtn.addEventListener("click", async () => {
+      statusEl.textContent = "Starting checkout...";
+
+      const { data: sessionData } = await supabaseClient.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+
+      if (!accessToken) {
+        statusEl.textContent = "You need to be logged in first.";
+        return;
+      }
+
+      const res = await fetch("https://YOUR_PROJECT_REF.supabase.co/functions/v1/create-checkout", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
+        }
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        statusEl.textContent = data.error || "Could not start checkout.";
+        return;
+      }
+
+      window.location.href = data.url;
+    });
+  </script>
+</body>
+</html>
