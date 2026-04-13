@@ -396,7 +396,50 @@
       </div>
     </div>
   </div>
+  
+<div id="welcomeOverlay" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+">
+  <div style="
+    width:min(460px, 100%);
+    background:var(--panel);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.35);
+  ">
+    <h2 style="margin:0 0 10px; font-size:24px;">Your account has been created</h2>
+    <p style="margin:0 0 16px; color:var(--muted);">
+      You are now logged in. Continue to Basic mode, or upgrade to unlock Deviation Drill.
+    </p>
 
+    <div style="
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:16px;
+    ">
+      <div style="font-weight:800; margin-bottom:6px;">Premium</div>
+      <div class="small" style="font-size:14px;">
+        To unlock Deviation Drill, get Premium.
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button id="btnContinueAfterSignup" class="btn" style="flex:1;">Continue</button>
+      <button id="btnGetPremium" class="btn-primary" style="flex:1;">Get Premium</button>
+    </div>
+  </div>
+</div>
+  
 <script>
 let supabaseClient = null;
 
@@ -705,6 +748,10 @@ const authLoggedInView = document.getElementById("authLoggedInView");
 const btnSignup = document.getElementById("btnSignup");
 const btnLogin = document.getElementById("btnLogin");
 const btnLogout = document.getElementById("btnLogout");
+const welcomeOverlay = document.getElementById("welcomeOverlay");
+const btnContinueAfterSignup = document.getElementById("btnContinueAfterSignup");
+const btnGetPremium = document.getElementById("btnGetPremium");
+
 
 function weights(){ return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value }; }
 function syncWeightLabels(){
@@ -731,9 +778,12 @@ let state = {
   handAnswered: false,
   handUserAction: null,
 };
-
-function updateDeviationTabLock(isLoggedIn){
-  tabDev.textContent = isLoggedIn ? "Deviations 🔓" : "Deviations 🔒";
+  
+let userProfile = null;
+let isPremiumUser = false;
+  
+function updateDeviationTabLock(){
+  updateDeviationAccessUI();
 }
 
 function renderCard(container, code){
@@ -1018,6 +1068,68 @@ function showFacit(){
   elFeedback.className = "feedback";
 }
 
+function showWelcomeOverlay(){
+  welcomeOverlay.style.display = "flex";
+}
+
+function hideWelcomeOverlay(){
+  welcomeOverlay.style.display = "none";
+}
+
+function shouldShowWelcomeScreen(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get("welcome") === "1";
+}
+
+function clearWelcomeParam(){
+  const url = new URL(window.location.href);
+  url.searchParams.delete("welcome");
+  window.history.replaceState({}, "", url.toString());
+}
+
+async function loadUserProfile(){
+  if (!supabaseClient) {
+    userProfile = null;
+    isPremiumUser = false;
+    return null;
+  }
+
+  const session = await getCurrentSession();
+  const user = session?.user;
+
+  if (!user) {
+    userProfile = null;
+    isPremiumUser = false;
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id,email,premium")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("loadUserProfile error:", error);
+    userProfile = null;
+    isPremiumUser = false;
+    return null;
+  }
+
+  userProfile = data;
+  isPremiumUser = !!data?.premium;
+  return data;
+}
+
+function updateDeviationAccessUI(){
+  if (!authLoggedInView || authLoggedInView.style.display === "none") {
+    tabDev.textContent = "Deviations 🔒";
+    return;
+  }
+
+  tabDev.textContent = isPremiumUser ? "Deviations 🔓" : "Deviations 🔒";
+}
+  
 async function getCurrentSession(){
   if (!supabaseClient) return null;
   const { data, error } = await supabaseClient.auth.getSession();
@@ -1040,7 +1152,12 @@ function applyLoggedOutUI(){
   authLoggedInView.style.display = "none";
   emailInput.value = "";
   passwordInput.value = "";
-  updateDeviationTabLock(false);
+
+  userProfile = null;
+  isPremiumUser = false;
+  updateDeviationTabLock();
+
+  hideWelcomeOverlay();
 
   if (state.mode === "dev") {
     setMode("basic");
@@ -1062,6 +1179,8 @@ async function refreshAuthUI(){
 
   if (user) {
     applyLoggedInUI(user);
+    await loadUserProfile();
+    updateDeviationTabLock();
   } else {
     applyLoggedOutUI();
   }
@@ -1081,11 +1200,23 @@ async function signUp(){
     return;
   }
 
-  const { error } = await supabaseClient.auth.signUp({ email, password });
-  authStatus.textContent = error ? error.message : "Signed up. Check your email if confirmation is enabled.";
+  const redirectUrl = `${window.location.origin}/?welcome=1`;
+
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirectUrl
+    }
+  });
+
+  authStatus.textContent = error
+    ? error.message
+    : "Signed up. Check your email to confirm your account.";
+
   await refreshAuthUI();
 }
-
+  
 async function login(){
   if (!supabaseClient) {
     authStatus.textContent = "Auth is unavailable right now.";
@@ -1163,6 +1294,15 @@ tabDev.addEventListener("click", async ()=>{
     return;
   }
 
+  await loadUserProfile();
+  updateDeviationTabLock();
+
+  if (!isPremiumUser) {
+    authStatus.textContent = "Premium required to use Deviations.";
+    showWelcomeOverlay();
+    return;
+  }
+
   setMode("dev");
 });
 
@@ -1183,6 +1323,17 @@ document.addEventListener("click", ()=>{
   authDropdown.classList.remove("open");
 });
 
+btnContinueAfterSignup.addEventListener("click", ()=>{
+  hideWelcomeOverlay();
+  clearWelcomeParam();
+  setMode("basic");
+});
+
+btnGetPremium.addEventListener("click", ()=>{
+  // Byt till din riktiga premium-sida senare
+  window.location.href = "/premium.html";
+});
+  
 if (supabaseClient) {
   supabaseClient.auth.onAuthStateChange((event, session) => {
     if (event === "SIGNED_OUT" || !session) {
@@ -1193,6 +1344,15 @@ if (supabaseClient) {
 
     if (session?.user) {
       applyLoggedInUI(session.user);
+
+      loadUserProfile().then(() => {
+        updateDeviationTabLock();
+
+        if (shouldShowWelcomeScreen()) {
+          showWelcomeOverlay();
+        }
+      });
+
       if (event === "SIGNED_IN") {
         authStatus.textContent = "Logged in.";
       }
@@ -1208,8 +1368,16 @@ if("serviceWorker" in navigator){
 
 (async function boot(){
   await refreshAuthUI();
+
+  if ((await isLoggedIn()) && shouldShowWelcomeScreen()) {
+    showWelcomeOverlay();
+  } else {
+    hideWelcomeOverlay();
+  }
+
   setMode("basic");
 })();
+  
 </script>
 </body>
 </html>
