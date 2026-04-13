@@ -1072,14 +1072,43 @@ function showWelcomeOverlay(){
   welcomeOverlay.style.display = "flex";
 }
 
-function showPremiumSuccessIfNeeded(){
+async function showPremiumSuccessIfNeeded(){
   const params = new URLSearchParams(window.location.search);
-  if (params.get("premium_success") === "1") {
-    authStatus.textContent = "Payment successful. Premium activated.";
-    const url = new URL(window.location.href);
-    url.searchParams.delete("premium_success");
-    window.history.replaceState({}, "", url.toString());
+  if (params.get("premium_success") !== "1") return;
+
+  authStatus.textContent = "Payment received. Activating premium...";
+
+  const session = await getCurrentSession();
+  const user = session?.user;
+
+  if (!user) {
+    authStatus.textContent = "Payment successful. Log in again to refresh premium access.";
+    return;
   }
+
+  for (let i = 0; i < 8; i++) {
+    await loadUserProfile();
+    updateDeviationTabLock();
+
+    if (isPremiumUser) {
+      authStatus.textContent = "Payment successful. Premium activated.";
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("premium_success");
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.toString());
+
+      if (welcomeOverlay && welcomeOverlay.style.display === "flex") {
+        hideWelcomeOverlay();
+      }
+
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  authStatus.textContent = "Payment completed. Premium may take a few seconds to appear.";
 }
 
 function hideWelcomeOverlay(){
@@ -1377,9 +1406,9 @@ if("serviceWorker" in navigator){
 
 (async function boot(){
   await refreshAuthUI();
-  showPremiumSuccessIfNeeded();
+  await showPremiumSuccessIfNeeded();
 
-  if ((await isLoggedIn()) && shouldShowWelcomeScreen()) {
+  if ((await isLoggedIn()) && shouldShowWelcomeScreen() && !isPremiumUser) {
     showWelcomeOverlay();
   } else {
     hideWelcomeOverlay();
