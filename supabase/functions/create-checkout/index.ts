@@ -37,31 +37,27 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_ANON_KEY")!,
-      {
-        global: {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      }
+      Deno.env.get("SB_PUBLISHABLE_KEY")!
     );
 
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
 
-    if (userError || !userData.user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), {
+    if (claimsError || !claimsData?.claims?.sub) {
+      return new Response(JSON.stringify({ error: "Invalid JWT" }), {
         status: 401,
         headers: corsHeaders,
       });
     }
 
-    const user = userData.user;
+    const userId = claimsData.claims.sub as string;
+    const userEmail =
+      typeof claimsData.claims.email === "string" ? claimsData.claims.email : undefined;
+
     const appUrl = Deno.env.get("APP_URL")!;
 
     const session = await stripe.checkout.sessions.create({
       mode: "payment",
-      customer_email: user.email ?? undefined,
+      customer_email: userEmail,
       line_items: [
         {
           price: Deno.env.get("STRIPE_PRICE_ID")!,
@@ -71,8 +67,8 @@ Deno.serve(async (req) => {
       success_url: `${appUrl}/?premium_success=1`,
       cancel_url: `${appUrl}/premium.html?canceled=1`,
       metadata: {
-        supabase_user_id: user.id,
-        user_email: user.email ?? "",
+        supabase_user_id: userId,
+        user_email: userEmail ?? "",
         product: "bj_trainer_premium",
       },
     });
@@ -84,8 +80,11 @@ Deno.serve(async (req) => {
   } catch (err) {
     console.error("create-checkout error:", err);
     return new Response(
-      JSON.stringify({ error: "Failed to create checkout session" }),
-      { status: 500, headers: corsHeaders }
+      JSON.stringify({ error: err instanceof Error ? err.message : "Failed to create checkout session" }),
+      {
+        status: 500,
+        headers: corsHeaders,
+      }
     );
   }
 });
