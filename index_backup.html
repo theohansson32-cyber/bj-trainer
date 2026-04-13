@@ -6,69 +6,310 @@
   <meta name="theme-color" content="#0b3d2e" />
   <link rel="manifest" href="manifest.webmanifest">
   <title>Blackjack Trainer</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    :root { --bg:#0b3d2e; --panel:#0e4b38; --text:#eef7f2; --muted:#b9d6c8; --bad:#ff6b6b; --good:#51cf66; --accent:#ffd43b; }
-    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;}
-    body{margin:0;background:radial-gradient(1200px 600px at 50% -100px, #146a50, var(--bg));color:var(--text);}
-    .wrap{max-width:980px;margin:0 auto;padding:16px;}
-    h1{margin:8px 0 6px;font-size:22px;}
-    .row{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .cardpanel{background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.10);border-radius:16px;padding:14px}
-    .sectiontitle{font-weight:700;margin:0 0 10px}
-    .hand{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-    .cardimg{width:92px;height:132px;border-radius:10px;box-shadow:0 10px 28px rgba(0,0,0,0.25);background:rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:center;overflow:hidden}
-    .cardimg img{width:100%;height:100%;object-fit:cover}
-    .cardfallback{font-size:20px;font-weight:800;color:#111;background:#fff;width:100%;height:100%;display:flex;align-items:center;justify-content:center}
-    .pill{display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);padding:8px 10px;border-radius:999px;color:var(--muted);font-size:13px}
-    .btnbar{display:flex;gap:10px;flex-wrap:wrap}
-    button{border:0;border-radius:14px;padding:12px 14px;font-weight:800;font-size:14px;cursor:pointer}
-    .btn{background:#f1f5f3;color:#111}
-    .btn:disabled{opacity:.45;cursor:not-allowed}
-    .btn-primary{background:var(--accent);color:#111}
-    .btn-ghost{background:rgba(255,255,255,0.10);color:var(--text);border:1px solid rgba(255,255,255,0.14)}
-    .feedback{font-size:16px;font-weight:800;margin-top:10px}
-    .good{color:var(--good)}
-    .bad{color:var(--bad)}
-    .grid{display:grid;grid-template-columns:1fr;gap:12px}
-    @media(min-width:860px){ .grid{grid-template-columns:1.05fr .95fr;} }
-    .sliders label{display:flex;justify-content:space-between;align-items:center;margin:10px 0;color:var(--muted);gap:12px}
-    input[type="range"]{width:55%}
-    .small{font-size:12px;color:var(--muted);line-height:1.35}
-    .topline{display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap}
-    .score{font-weight:900}
-    .tabs{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
-    .tab{background:rgba(255,255,255,0.10);color:var(--text);border:1px solid rgba(255,255,255,0.14)}
-    .tab.active{background:var(--accent);color:#111;border-color:transparent}
-    .countBox{
-      display:inline-flex;align-items:center;gap:8px;
-      background:rgba(0,0,0,0.22);border:1px solid rgba(255,255,255,0.14);
-      padding:10px 12px;border-radius:14px;font-weight:900
+    :root {
+      --bg:#0b3d2e;
+      --panel:#0e4b38;
+      --text:#eef7f2;
+      --muted:#b9d6c8;
+      --bad:#ff6b6b;
+      --good:#51cf66;
+      --accent:#ffd43b;
     }
-    .countNum{font-size:18px}
-    .hint{margin-top:8px}
-    code{background:rgba(0,0,0,.25);padding:2px 6px;border-radius:8px}
-    .biasRow{
+
+    * { box-sizing:border-box; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial; }
+
+    body {
+      margin:0;
+      background:radial-gradient(1200px 600px at 50% -100px, #146a50, var(--bg));
+      color:var(--text);
+    }
+
+    .wrap {
+      max-width:980px;
+      margin:0 auto;
+      padding:16px;
+      position:relative;
+    }
+
+    h1 { margin:8px 0 6px; font-size:22px; }
+
+    .row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+
+    .cardpanel {
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:16px;
+      padding:14px;
+    }
+
+    .sectiontitle { font-weight:700; margin:0 0 10px; }
+
+    .hand { display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+
+    .cardimg {
+      width:92px;
+      height:132px;
+      border-radius:10px;
+      box-shadow:0 10px 28px rgba(0,0,0,0.25);
+      background:rgba(255,255,255,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      overflow:hidden;
+    }
+
+    .cardimg img {
+      width:100%;
+      height:100%;
+      object-fit:cover;
+    }
+
+    .cardfallback {
+      font-size:20px;
+      font-weight:800;
+      color:#111;
+      background:#fff;
+      width:100%;
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .pill {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(255,255,255,0.08);
+      border:1px solid rgba(255,255,255,0.12);
+      padding:8px 10px;
+      border-radius:999px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .btnbar { display:flex; gap:10px; flex-wrap:wrap; }
+
+    button {
+      border:0;
+      border-radius:14px;
+      padding:12px 14px;
+      font-weight:800;
+      font-size:14px;
+      cursor:pointer;
+    }
+
+    .btn { background:#f1f5f3; color:#111; }
+    .btn:disabled { opacity:.45; cursor:not-allowed; }
+    .btn-primary { background:var(--accent); color:#111; }
+
+    .btn-ghost {
+      background:rgba(255,255,255,0.10);
+      color:var(--text);
+      border:1px solid rgba(255,255,255,0.14);
+    }
+
+    .feedback { font-size:16px; font-weight:800; margin-top:10px; }
+    .good { color:var(--good); }
+    .bad { color:var(--bad); }
+
+    .grid {
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+
+    @media(min-width:860px){
+      .grid{grid-template-columns:1.05fr .95fr;}
+    }
+
+    .sliders label {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      margin:10px 0;
+      color:var(--muted);
+      gap:12px;
+    }
+
+    input[type="range"] { width:55%; }
+
+    .small { font-size:12px; color:var(--muted); line-height:1.35; }
+
+    .topline {
+      display:flex;
+      justify-content:space-between;
+      align-items:flex-end;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .score { font-weight:900; }
+
+    .tabs {
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:10px;
+    }
+
+    .tab {
+      background:rgba(255,255,255,0.10);
+      color:var(--text);
+      border:1px solid rgba(255,255,255,0.14);
+    }
+
+    .tab.active {
+      background:var(--accent);
+      color:#111;
+      border-color:transparent;
+    }
+
+    .countBox {
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      background:rgba(0,0,0,0.22);
+      border:1px solid rgba(255,255,255,0.14);
+      padding:10px 12px;
+      border-radius:14px;
+      font-weight:900;
+    }
+
+    .countNum { font-size:18px; }
+
+    code {
+      background:rgba(0,0,0,.25);
+      padding:2px 6px;
+      border-radius:8px;
+    }
+
+    .biasRow {
       display:flex;
       align-items:center;
       gap:10px;
       margin-top:10px;
     }
-    .biasEnds{
+
+    .biasEnds {
       width:18px;
       text-align:center;
       font-weight:900;
+    }
+
+    .authMenu {
+      position:absolute;
+      top:16px;
+      right:16px;
+      z-index:20;
+    }
+
+    #authToggle {
+      background:var(--accent);
+      color:#111;
+      border-radius:999px;
+      height:42px;
+      font-size:18px;
+      padding:0 14px;
+      display:flex;
+      align-items:center;
+      gap:10px;
+    }
+
+    #authBadge {
+      font-size:14px;
+      font-weight:800;
+      max-width:180px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+
+    .authDropdown {
+      display:none;
+      position:absolute;
+      right:0;
+      top:52px;
+      background:var(--panel);
+      border:1px solid rgba(255,255,255,0.15);
+      border-radius:14px;
+      padding:12px;
+      width:240px;
+      box-shadow:0 10px 30px rgba(0,0,0,0.3);
+    }
+
+    .authDropdown.open { display:block; }
+
+    .authDropdown input {
+      width:100%;
+      margin-bottom:8px;
+      padding:10px 12px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.18);
+      background:rgba(255,255,255,0.08);
+      color:var(--text);
+      outline:none;
+    }
+
+    .authDropdown .authButtons {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-bottom:8px;
+    }
+
+    #authStatus {
+      margin:8px 0 0;
+      font-size:12px;
+      color:var(--muted);
+      min-height:16px;
+    }
+
+    #authUser {
+      margin:0 0 8px;
+      font-size:12px;
+      color:var(--text);
+      word-break:break-word;
     }
   </style>
 </head>
 <body>
   <div class="wrap">
+    <div class="authMenu">
+      <button id="authToggle" title="Account">
+        <span>👤</span>
+        <span id="authBadge">Not logged in</span>
+      </button>
+
+      <div id="authDropdown" class="authDropdown">
+        <p id="authUser">Not logged in</p>
+
+        <div id="authLoggedOutView">
+          <input id="email" placeholder="Email" autocomplete="email">
+          <input id="password" type="password" placeholder="Password" autocomplete="current-password">
+          <div class="authButtons">
+            <button class="btn" id="btnSignup">Sign up</button>
+            <button class="btn" id="btnLogin">Login</button>
+          </div>
+        </div>
+
+        <div id="authLoggedInView" style="display:none;">
+          <button class="btn-ghost" id="btnLogout" style="width:100%;">Log out</button>
+        </div>
+
+        <p id="authStatus"></p>
+      </div>
+    </div>
+
     <div class="topline">
       <div>
         <h1>Blackjack Trainer</h1>
         <div class="pill">Rules: S17 · 6D · DAS · Late surrender in deviation mode</div>
         <div class="tabs">
           <button class="tab active" id="tabBasic">Basic</button>
-          <button class="tab" id="tabDev">Deviations</button>
+          <button class="tab" id="tabDev">Deviations 🔒</button>
         </div>
       </div>
       <div class="score" id="score">Score: 0/0 (0.0%)</div>
@@ -110,7 +351,7 @@
 
         <div class="feedback" id="feedback">Choose an action.</div>
 
-        <div class="small hint" id="modeHint">
+        <div class="small" id="modeHint">
           Basic mode: feedback on the first decision.
         </div>
       </div>
@@ -155,8 +396,72 @@
       </div>
     </div>
   </div>
+  
+<div id="welcomeOverlay" style="
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.55);
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+">
+  <div style="
+    width:min(460px, 100%);
+    background:var(--panel);
+    border:1px solid rgba(255,255,255,0.14);
+    border-radius:18px;
+    padding:22px;
+    box-shadow:0 20px 50px rgba(0,0,0,0.35);
+  ">
+    <h2 style="margin:0 0 10px; font-size:24px;">Your account has been created</h2>
+    <p style="margin:0 0 16px; color:var(--muted);">
+      You are now logged in. Continue to Basic mode, or upgrade to unlock Deviation Drill.
+    </p>
 
+    <div style="
+      background:rgba(255,255,255,0.06);
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:14px;
+      padding:14px;
+      margin-bottom:16px;
+    ">
+      <div style="font-weight:800; margin-bottom:6px;">Premium</div>
+      <div class="small" style="font-size:14px;">
+        To unlock Deviation Drill, get Premium.
+      </div>
+    </div>
+
+    <div style="display:flex; gap:10px; flex-wrap:wrap;">
+      <button id="btnContinueAfterSignup" class="btn" style="flex:1;">Continue</button>
+      <button id="btnGetPremium" class="btn-primary" style="flex:1;">Get Premium</button>
+    </div>
+  </div>
+</div>
+  
 <script>
+let supabaseClient = null;
+
+try {
+  if (window.supabase && typeof window.supabase.createClient === "function") {
+    supabaseClient = window.supabase.createClient(
+      "https://xhxkyongmcduyibhkwby.supabase.co",
+      "sb_publishable_DyyjT6peOtnrtt86U0AXTA_yZYvy-qc",
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          storageKey: "bj-trainer-auth"
+        }
+      }
+    );
+  }
+} catch (err) {
+  console.error("Supabase init failed:", err);
+}
+
 const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
 const SUITS = ["S","H","D","C"];
 const CARD_VALUES = { A:11, "2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,J:10,Q:10,K:10 };
@@ -208,9 +513,6 @@ function actionName(a){
   })[a] ?? a;
 }
 
-/* =========================
-   Basic Strategy (S17, 6D, DAS, no surrender)
-========================= */
 function basicStrategy(playerCards, dealerUp, canDouble, canSplitNow){
   const up = splitRank(rankOf(dealerUp));
 
@@ -266,9 +568,6 @@ function facitTextBasic(){
   return `Basic strategy: ${actionName(sug)}`;
 }
 
-/* =========================
-   Basic mode generators
-========================= */
 function genSoftHand(){
   return [randomCard("A"), randomCard(["2","3","4","5","6","7","8","9"][Math.floor(Math.random()*8)])];
 }
@@ -304,9 +603,6 @@ function pickTrainingHand(weights){
   return { player, dealerUp, cat };
 }
 
-/* =========================
-   Deviations
-========================= */
 function tcMeets(tc, cond){
   if(!cond || cond.op === "ALWAYS") return true;
   if(cond.op === ">=") return tc >= cond.n;
@@ -330,8 +626,6 @@ function makeHardHand(total){
   return [randomCard(r[0]), randomCard(r[1])];
 }
 
-// Only hands that actually need a TC-based decision live here.
-// Always-surrender spots like 16 vs 10 / A are handled in baseline.
 const DEVIATIONS = [
   { cat:"Split", playerType:"pair", pair:"10", dealer:"4", dev:{op:">=", n:6}, action:"P", label:"TT vs 4: Split @ 6+" },
   { cat:"Split", playerType:"pair", pair:"10", dealer:"5", dev:{op:">=", n:5}, action:"P", label:"TT vs 5: Split @ 5+" },
@@ -368,19 +662,14 @@ const INSURANCE_INDEX = { op:">=", n:3 };
 function generateTC(){
   const bias = parseInt(tcBias.value, 10) || 0;
 
-  if (bias === 0) {
-    return Math.floor(Math.random() * 15) - 7;
-  }
+  if (bias === 0) return Math.floor(Math.random() * 15) - 7;
 
   const preferPositive = bias > 0;
   const strength = Math.abs(bias) / 7;
 
   if (Math.random() < strength) {
-    if (preferPositive) {
-      return Math.floor(Math.random() * 8); // 0..7
-    } else {
-      return -Math.floor(Math.random() * 8); // 0..-7
-    }
+    if (preferPositive) return Math.floor(Math.random() * 8);
+    return -Math.floor(Math.random() * 8);
   }
 
   return Math.floor(Math.random() * 15) - 7;
@@ -413,9 +702,6 @@ function pickDeviationScenario(){
   return { tc, dealerUp, player, dev };
 }
 
-/* =========================
-   DOM references
-========================= */
 const elDealer = document.getElementById("dealerHand");
 const elPlayer = document.getElementById("playerHand");
 const elFeedback = document.getElementById("feedback");
@@ -450,9 +736,23 @@ const wPairVal = document.getElementById("wPairVal");
 
 const tcBias = document.getElementById("tcBias");
 
-/* =========================
-   State
-========================= */
+const authToggle = document.getElementById("authToggle");
+const authDropdown = document.getElementById("authDropdown");
+const authStatus = document.getElementById("authStatus");
+const authUser = document.getElementById("authUser");
+const authBadge = document.getElementById("authBadge");
+const emailInput = document.getElementById("email");
+const passwordInput = document.getElementById("password");
+const authLoggedOutView = document.getElementById("authLoggedOutView");
+const authLoggedInView = document.getElementById("authLoggedInView");
+const btnSignup = document.getElementById("btnSignup");
+const btnLogin = document.getElementById("btnLogin");
+const btnLogout = document.getElementById("btnLogout");
+const welcomeOverlay = document.getElementById("welcomeOverlay");
+const btnContinueAfterSignup = document.getElementById("btnContinueAfterSignup");
+const btnGetPremium = document.getElementById("btnGetPremium");
+
+
 function weights(){ return { hard: +wHard.value, soft: +wSoft.value, pair: +wPair.value }; }
 function syncWeightLabels(){
   wHardVal.textContent = wHard.value;
@@ -470,16 +770,21 @@ let state = {
   locked: false,
   correct: 0,
   total: 0,
-
   tc: 0,
   devScenario: null,
-
   insuranceNeeded: false,
   insuranceAnswered: false,
   insuranceUserAction: null,
   handAnswered: false,
   handUserAction: null,
 };
+  
+let userProfile = null;
+let isPremiumUser = false;
+  
+function updateDeviationTabLock(){
+  updateDeviationAccessUI();
+}
 
 function renderCard(container, code){
   const div = document.createElement("div");
@@ -541,7 +846,6 @@ function setLocked(locked){
 
   btnInsTake.disabled = !insuranceRelevant;
   btnInsNo.disabled = !insuranceRelevant;
-
   btnShow.disabled = false;
 }
 
@@ -600,7 +904,6 @@ function computeCorrectInsuranceAction(){
 }
 
 function surrenderBaseAction(total, up){
-  // Surrender baselines from the chart logic
   if (total === 16 && ["9","10","A"].includes(up)) return "R";
   if (total === 15 && up === "10") return "R";
   return null;
@@ -613,66 +916,21 @@ function computeCorrectHandActionDeviation(){
   const up = splitRank(rankOf(state.dealerUp));
   const tc = state.tc;
 
-  // 16 vs 9:
-  // <= -1 Hit
-  // 0..3 Surrender
-  // >= 4 Stand
   if (total === 16 && up === "9") {
-    if (tc <= -1) {
-      return {
-        correctAction: "H",
-        why: `16 vs 9: at TC ${tcToLabel(tc)} you should Hit.`
-      };
-    }
-    if (tc >= 4) {
-      return {
-        correctAction: "S",
-        why: `16 vs 9: at TC ${tcToLabel(tc)} you should Stand.`
-      };
-    }
-    return {
-      correctAction: "R",
-      why: `16 vs 9: at TC ${tcToLabel(tc)} you should Surrender.`
-    };
+    if (tc <= -1) return { correctAction: "H", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Hit.` };
+    if (tc >= 4) return { correctAction: "S", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Stand.` };
+    return { correctAction: "R", why: `16 vs 9: at TC ${tcToLabel(tc)} you should Surrender.` };
   }
 
-  // 15 vs 10:
-  // <= 0 Hit
-  // 1..3 Surrender
-  // >= 4 Stand
   if (total === 15 && up === "10") {
-    if (tc <= 0) {
-      return {
-        correctAction: "H",
-        why: `15 vs 10: at TC ${tcToLabel(tc)} you should Hit.`
-      };
-    }
-    if (tc >= 4) {
-      return {
-        correctAction: "S",
-        why: `15 vs 10: at TC ${tcToLabel(tc)} you should Stand.`
-      };
-    }
-    return {
-      correctAction: "R",
-      why: `15 vs 10: at TC ${tcToLabel(tc)} you should Surrender.`
-      };
+    if (tc <= 0) return { correctAction: "H", why: `15 vs 10: at TC ${tcToLabel(tc)} you should Hit.` };
+    if (tc >= 4) return { correctAction: "S", why: `15 vs 10: at TC ${tcToLabel(tc)} you should Stand.` };
+    return { correctAction: "R", why: `15 vs 10: at TC ${tcToLabel(tc)} you should Surrender.` };
   }
 
-  // A,8 vs 6:
-  // TC < +1 -> Stand
-  // TC >= +1 -> Double
   if (soft && total === 19 && up === "6") {
-    if (tc >= 1) {
-      return {
-        correctAction: "D",
-        why: `A,8 vs 6: at TC ${tcToLabel(tc)} you should Double.`
-      };
-    }
-    return {
-      correctAction: "S",
-      why: `A,8 vs 6: at TC ${tcToLabel(tc)} you should Stand.`
-    };
+    if (tc >= 1) return { correctAction: "D", why: `A,8 vs 6: at TC ${tcToLabel(tc)} you should Double.` };
+    return { correctAction: "S", why: `A,8 vs 6: at TC ${tcToLabel(tc)} you should Stand.` };
   }
 
   const dev = state.devScenario.dev;
@@ -707,15 +965,11 @@ function checkRoundComplete(){
 
     if(state.insuranceNeeded){
       const insuranceCorrect = computeCorrectInsuranceAction();
-      if(state.insuranceUserAction !== insuranceCorrect){
-        roundCorrect = false;
-      }
+      if(state.insuranceUserAction !== insuranceCorrect) roundCorrect = false;
     }
 
     const handCorrect = computeCorrectHandActionDeviation().correctAction;
-    if(state.handUserAction !== handCorrect){
-      roundCorrect = false;
-    }
+    if(state.handUserAction !== handCorrect) roundCorrect = false;
 
     state.total += 1;
     if(roundCorrect) state.correct += 1;
@@ -806,9 +1060,7 @@ function showFacit(){
   const insuranceRes = state.insuranceNeeded ? computeCorrectInsuranceAction() : null;
 
   const parts = [];
-  if(insuranceRes){
-    parts.push(`Insurance: ${actionName(insuranceRes)}`);
-  }
+  if(insuranceRes) parts.push(`Insurance: ${actionName(insuranceRes)}`);
   parts.push(`Hand: ${actionName(handRes.correctAction)}`);
   parts.push(handRes.why);
 
@@ -816,9 +1068,248 @@ function showFacit(){
   elFeedback.className = "feedback";
 }
 
-/* =========================
-   Event listeners
-========================= */
+function showWelcomeOverlay(){
+  welcomeOverlay.style.display = "flex";
+}
+
+async function showPremiumSuccessIfNeeded(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("premium_success") !== "1") return;
+
+  authStatus.textContent = "Payment received. Activating premium...";
+
+  const session = await getCurrentSession();
+  const user = session?.user;
+
+  if (!user) {
+    authStatus.textContent = "Payment successful. Log in again to refresh premium access.";
+    return;
+  }
+
+  for (let i = 0; i < 8; i++) {
+    await loadUserProfile();
+    updateDeviationTabLock();
+
+    if (isPremiumUser) {
+      authStatus.textContent = "Payment successful. Premium activated.";
+
+      const url = new URL(window.location.href);
+      url.searchParams.delete("premium_success");
+      url.searchParams.delete("session_id");
+      window.history.replaceState({}, "", url.toString());
+
+      if (welcomeOverlay && welcomeOverlay.style.display === "flex") {
+        hideWelcomeOverlay();
+      }
+
+      return;
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1500));
+  }
+
+  authStatus.textContent = "Payment completed. Premium may take a few seconds to appear.";
+}
+
+function hideWelcomeOverlay(){
+  welcomeOverlay.style.display = "none";
+}
+
+function shouldShowWelcomeScreen(){
+  const params = new URLSearchParams(window.location.search);
+  return params.get("welcome") === "1";
+}
+
+function clearWelcomeParam(){
+  const url = new URL(window.location.href);
+  url.searchParams.delete("welcome");
+  window.history.replaceState({}, "", url.toString());
+}
+
+async function loadUserProfile(){
+  if (!supabaseClient) {
+    userProfile = null;
+    isPremiumUser = false;
+    return null;
+  }
+
+  const session = await getCurrentSession();
+  const user = session?.user;
+
+  if (!user) {
+    userProfile = null;
+    isPremiumUser = false;
+    return null;
+  }
+
+  const { data, error } = await supabaseClient
+    .from("profiles")
+    .select("id,email,premium")
+    .eq("id", user.id)
+    .single();
+
+  if (error) {
+    console.error("loadUserProfile error:", error);
+    userProfile = null;
+    isPremiumUser = false;
+    return null;
+  }
+
+  userProfile = data;
+  isPremiumUser = !!data?.premium;
+  return data;
+}
+
+function updateDeviationAccessUI(){
+  if (!authLoggedInView || authLoggedInView.style.display === "none") {
+    tabDev.textContent = "Deviations 🔒";
+    return;
+  }
+
+  tabDev.textContent = isPremiumUser ? "Deviations 🔓" : "Deviations 🔒";
+}
+  
+async function getCurrentSession(){
+  if (!supabaseClient) return null;
+  const { data, error } = await supabaseClient.auth.getSession();
+  if (error) {
+    console.error("getSession error:", error);
+    return null;
+  }
+  return data.session ?? null;
+}
+
+async function isLoggedIn(){
+  const session = await getCurrentSession();
+  return !!session?.user;
+}
+
+function applyLoggedOutUI(){
+  authUser.textContent = "Not logged in";
+  authBadge.textContent = "Not logged in";
+  authLoggedOutView.style.display = "block";
+  authLoggedInView.style.display = "none";
+  emailInput.value = "";
+  passwordInput.value = "";
+
+  userProfile = null;
+  isPremiumUser = false;
+  updateDeviationTabLock();
+
+  hideWelcomeOverlay();
+
+  if (state.mode === "dev") {
+    setMode("basic");
+  }
+}
+
+function applyLoggedInUI(user){
+  const label = user?.email || "Logged in";
+  authUser.textContent = `Logged in as ${label}`;
+  authBadge.textContent = label;
+  authLoggedOutView.style.display = "none";
+  authLoggedInView.style.display = "block";
+  updateDeviationTabLock(true);
+}
+
+async function refreshAuthUI(){
+  const session = await getCurrentSession();
+  const user = session?.user ?? null;
+
+  if (user) {
+    applyLoggedInUI(user);
+    await loadUserProfile();
+    updateDeviationTabLock();
+  } else {
+    applyLoggedOutUI();
+  }
+}
+
+async function signUp(){
+  if (!supabaseClient) {
+    authStatus.textContent = "Auth is unavailable right now.";
+    return;
+  }
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if(!email || !password){
+    authStatus.textContent = "Enter email and password.";
+    return;
+  }
+
+  const redirectUrl = `${window.location.origin}/?welcome=1`;
+
+  const { error } = await supabaseClient.auth.signUp({
+    email,
+    password,
+    options: {
+      emailRedirectTo: redirectUrl
+    }
+  });
+
+  authStatus.textContent = error
+    ? error.message
+    : "Signed up. Check your email to confirm your account.";
+
+  await refreshAuthUI();
+}
+  
+async function login(){
+  if (!supabaseClient) {
+    authStatus.textContent = "Auth is unavailable right now.";
+    return;
+  }
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if(!email || !password){
+    authStatus.textContent = "Enter email and password.";
+    return;
+  }
+
+  const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+  if (error) {
+    authStatus.textContent = error.message;
+    return;
+  }
+
+  if (data?.user) {
+    applyLoggedInUI(data.user);
+  } else {
+    await refreshAuthUI();
+  }
+
+  authStatus.textContent = "Logged in.";
+  authDropdown.classList.remove("open");
+}
+
+async function logout(){
+  if (!supabaseClient) {
+    authStatus.textContent = "Auth is unavailable right now.";
+    return;
+  }
+
+  try {
+    const { error } = await supabaseClient.auth.signOut();
+
+    if (error) {
+      authStatus.textContent = error.message;
+      return;
+    }
+
+    applyLoggedOutUI();
+    authStatus.textContent = "Logged out.";
+    authDropdown.classList.remove("open");
+  } catch (err) {
+    console.error("logout error:", err);
+    authStatus.textContent = "Logout failed.";
+  }
+}
+
 btnNew.addEventListener("click", newHand);
 btnShow.addEventListener("click", showFacit);
 
@@ -832,7 +1323,80 @@ btnInsTake.addEventListener("click", ()=>chooseInsurance("I"));
 btnInsNo.addEventListener("click", ()=>chooseInsurance("N"));
 
 tabBasic.addEventListener("click", ()=>setMode("basic"));
-tabDev.addEventListener("click", ()=>setMode("dev"));
+
+tabDev.addEventListener("click", async ()=>{
+  const loggedIn = await isLoggedIn();
+
+  if (!loggedIn) {
+    authStatus.textContent = "Log in to use Deviations.";
+    authDropdown.classList.add("open");
+    return;
+  }
+
+  await loadUserProfile();
+  updateDeviationTabLock();
+
+  if (!isPremiumUser) {
+    authStatus.textContent = "Premium required to use Deviations.";
+    showWelcomeOverlay();
+    return;
+  }
+
+  setMode("dev");
+});
+
+btnSignup.addEventListener("click", signUp);
+btnLogin.addEventListener("click", login);
+btnLogout.addEventListener("click", logout);
+
+authToggle.addEventListener("click", (e)=>{
+  e.stopPropagation();
+  authDropdown.classList.toggle("open");
+});
+
+authDropdown.addEventListener("click", (e)=>{
+  e.stopPropagation();
+});
+
+document.addEventListener("click", ()=>{
+  authDropdown.classList.remove("open");
+});
+
+btnContinueAfterSignup.addEventListener("click", ()=>{
+  hideWelcomeOverlay();
+  clearWelcomeParam();
+  setMode("basic");
+});
+
+btnGetPremium.addEventListener("click", ()=>{
+  window.location.href = "/premium.html";
+});
+  
+if (supabaseClient) {
+  supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === "SIGNED_OUT" || !session) {
+      applyLoggedOutUI();
+      authStatus.textContent = event === "SIGNED_OUT" ? "Logged out." : authStatus.textContent;
+      return;
+    }
+
+    if (session?.user) {
+      applyLoggedInUI(session.user);
+
+      loadUserProfile().then(() => {
+        updateDeviationTabLock();
+
+        if (shouldShowWelcomeScreen()) {
+          showWelcomeOverlay();
+        }
+      });
+
+      if (event === "SIGNED_IN") {
+        authStatus.textContent = "Logged in.";
+      }
+    }
+  });
+}
 
 if("serviceWorker" in navigator){
   window.addEventListener("load", async () => {
@@ -840,7 +1404,19 @@ if("serviceWorker" in navigator){
   });
 }
 
-setMode("basic");
+(async function boot(){
+  await refreshAuthUI();
+  await showPremiumSuccessIfNeeded();
+
+  if ((await isLoggedIn()) && shouldShowWelcomeScreen() && !isPremiumUser) {
+    showWelcomeOverlay();
+  } else {
+    hideWelcomeOverlay();
+  }
+
+  setMode("basic");
+})();
+  
 </script>
 </body>
-</html>
+</html> 
