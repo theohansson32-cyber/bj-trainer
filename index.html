@@ -1072,6 +1072,16 @@ function showWelcomeOverlay(){
   welcomeOverlay.style.display = "flex";
 }
 
+function showPremiumSuccessIfNeeded(){
+  const params = new URLSearchParams(window.location.search);
+  if (params.get("premium_success") === "1") {
+    authStatus.textContent = "Payment successful. Premium activated.";
+    const url = new URL(window.location.href);
+    url.searchParams.delete("premium_success");
+    window.history.replaceState({}, "", url.toString());
+  }
+}
+
 function hideWelcomeOverlay(){
   welcomeOverlay.style.display = "none";
 }
@@ -1330,7 +1340,6 @@ btnContinueAfterSignup.addEventListener("click", ()=>{
 });
 
 btnGetPremium.addEventListener("click", ()=>{
-  // Byt till din riktiga premium-sida senare
   window.location.href = "/premium.html";
 });
   
@@ -1368,6 +1377,7 @@ if("serviceWorker" in navigator){
 
 (async function boot(){
   await refreshAuthUI();
+  showPremiumSuccessIfNeeded();
 
   if ((await isLoggedIn()) && shouldShowWelcomeScreen()) {
     showWelcomeOverlay();
