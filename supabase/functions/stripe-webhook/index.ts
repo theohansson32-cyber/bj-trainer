@@ -2,7 +2,7 @@ import Stripe from "npm:stripe@17";
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
-const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
+const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET");
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
