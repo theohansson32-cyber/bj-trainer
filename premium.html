@@ -166,47 +166,61 @@
       statusEl.className = cls;
     }
 
-    async function startCheckout() {
-      setStatus("Starting checkout...");
+async function startCheckout() {
+  setStatus("Starting checkout...");
 
-      const { data, error } = await supabaseClient.auth.getSession();
-      if (error || !data?.session?.access_token) {
-        setStatus("You need to be logged in first.", "bad");
-        return;
-      }
+  const { data, error } = await supabaseClient.auth.getSession();
+  console.log("getSession:", { data, error });
 
-      const accessToken = data.session.access_token;
+  if (error) {
+    setStatus(`Session error: ${error.message}`, "bad");
+    return;
+  }
 
-      try {
-        const res = await fetch(
-          "https://xhxkyongmcduyibhkwby.supabase.co/functions/v1/create-checkout",
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              "Authorization": `Bearer ${accessToken}`
-            }
-          }
-        );
+  if (!data?.session?.access_token) {
+    setStatus("No active session found on premium page.", "bad");
+    return;
+  }
 
-        const json = await res.json();
+  const accessToken = data.session.access_token;
 
-        if (!res.ok) {
-          setStatus(json.error || "Could not start checkout.", "bad");
-          return;
+  try {
+    const res = await fetch(
+      "https://xhxkyongmcduyibhkwby.supabase.co/functions/v1/create-checkout",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${accessToken}`
         }
-
-        if (!json.url) {
-          setStatus("Checkout URL missing.", "bad");
-          return;
-        }
-
-        window.location.href = json.url;
-      } catch (err) {
-        console.error(err);
-        setStatus("Could not connect to checkout.", "bad");
       }
+    );
+
+    const raw = await res.text();
+    console.log("create-checkout status:", res.status);
+    console.log("create-checkout raw:", raw);
+
+    let json = {};
+    try {
+      json = JSON.parse(raw);
+    } catch (_) {}
+
+    if (!res.ok) {
+      setStatus(json.error || json.message || raw || `Checkout failed (${res.status})`, "bad");
+      return;
     }
+
+    if (!json.url) {
+      setStatus("Checkout URL missing.", "bad");
+      return;
+    }
+
+    window.location.href = json.url;
+  } catch (err) {
+    console.error("Checkout fetch error:", err);
+    setStatus(`Could not connect to checkout: ${err.message}`, "bad");
+  }
+}
 
     const params = new URLSearchParams(window.location.search);
     if (params.get("canceled") === "1") {
