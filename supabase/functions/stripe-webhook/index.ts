@@ -6,15 +6,9 @@ const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
 const supabaseUrl = Deno.env.get("SUPABASE_URL");
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-if (!stripeSecretKey) {
-  throw new Error("Missing STRIPE_SECRET_KEY");
-}
-if (!webhookSecret) {
-  throw new Error("Missing STRIPE_WEBHOOK_SECRET");
-}
-if (!supabaseUrl) {
-  throw new Error("Missing SUPABASE_URL");
-}
+if (!stripeSecretKey) throw new Error("Missing STRIPE_SECRET_KEY");
+if (!webhookSecret) throw new Error("Missing STRIPE_WEBHOOK_SECRET");
+if (!supabaseUrl) throw new Error("Missing SUPABASE_URL");
 if (!supabaseServiceRoleKey) {
   throw new Error("Missing SUPABASE_SERVICE_ROLE_KEY");
 }
@@ -52,21 +46,25 @@ Deno.serve(async (req) => {
     );
   }
 
-  console.log("Stripe event received", {
-    type: event.type,
+  console.log("Stripe event received:", {
     id: event.id,
+    type: event.type,
   });
 
   try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      console.log("checkout.session.completed payload", {
-        sessionId: session.id,
-        paymentStatus: session.payment_status,
-        customerEmail: session.customer_details?.email ?? session.customer_email,
-        metadata: session.metadata,
-      });
+      console.log(
+        "checkout.session.completed payload:",
+        JSON.stringify({
+          sessionId: session.id,
+          paymentStatus: session.payment_status,
+          customerEmail:
+            session.customer_details?.email ?? session.customer_email,
+          metadata: session.metadata,
+        })
+      );
 
       const userId = session.metadata?.supabase_user_id?.trim();
 
@@ -78,7 +76,7 @@ Deno.serve(async (req) => {
       }
 
       if (session.payment_status !== "paid") {
-        console.error("Session completed but payment_status is not paid", {
+        console.error("Payment not marked as paid:", {
           sessionId: session.id,
           paymentStatus: session.payment_status,
         });
@@ -87,11 +85,26 @@ Deno.serve(async (req) => {
 
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
+      const { data: existingProfile, error: existingProfileError } =
+        await supabase
+          .from("profiles")
+          .select("id, email, premium")
+          .eq("id", userId)
+          .maybeSingle();
+
+      console.log("Existing profile lookup:", {
+        userId,
+        existingProfile,
+        existingProfileError,
+      });
+
       const { data, error } = await supabase
         .from("profiles")
         .update({ premium: true })
         .eq("id", userId)
         .select("id, email, premium");
+
+      console.log("Update result:", { data, error });
 
       if (error) {
         console.error("Failed updating premium:", error);
@@ -99,14 +112,11 @@ Deno.serve(async (req) => {
       }
 
       if (!data || data.length === 0) {
-        console.error("No profile row matched this userId", { userId });
+        console.error("No matching profile row found for userId:", userId);
         return new Response("No matching profile found", { status: 404 });
       }
 
-      console.log("Premium activated", {
-        userId,
-        updatedRows: data,
-      });
+      console.log("Premium activated for user:", userId);
     }
 
     return new Response("ok", { status: 200 });
