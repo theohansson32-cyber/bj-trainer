@@ -158,6 +158,16 @@
       }
     );
 
+    supabaseClient.auth.getUser().then(({ data, error }) => {
+  console.log("USER:", data, error);
+
+  if (data?.user) {
+    setStatus(`Logged in as ${data.user.email}`);
+  } else {
+    setStatus("NOT LOGGED IN on premium page", "bad");
+  }
+});
+
     const buyBtn = document.getElementById("buyBtn");
     const statusEl = document.getElementById("status");
 
