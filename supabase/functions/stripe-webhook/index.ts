@@ -32,13 +32,13 @@ Deno.serve(async (req) => {
     );
   }
 
-  try {
-    console.log("Stripe event type:", event.type);
+  console.log("Stripe event type:", event.type);
 
+  try {
     if (event.type === "checkout.session.completed") {
       const session = event.data.object as Stripe.Checkout.Session;
 
-      console.log("Session metadata:", session.metadata);
+      console.log("Full session metadata:", session.metadata);
 
       const userId = session.metadata?.supabase_user_id;
       console.log("Resolved userId:", userId);
@@ -53,16 +53,18 @@ Deno.serve(async (req) => {
         Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
       );
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("profiles")
         .update({ premium: true })
-        .eq("id", userId);
+        .eq("id", userId)
+        .select();
 
       if (error) {
         console.error("Failed updating premium:", error);
         return new Response("Failed updating premium", { status: 500 });
       }
 
+      console.log("Updated rows:", data);
       console.log(`Premium activated for user ${userId}`);
     }
 
