@@ -107,6 +107,11 @@ li.item .n small{display:block;color:var(--muted)}
 .acct .grow{flex:1;min-width:140px;color:var(--muted)}
 .acct input{width:auto;flex:1;min-width:150px}
 .acct .err{color:var(--exp);width:100%}
+.dh{display:flex;justify-content:space-between;gap:8px;padding:14px 0 6px;font-weight:600;font-size:14px;border-top:1px solid var(--line)}
+.dh:first-child{border-top:none;padding-top:0}
+.dh small{font-weight:400;color:var(--muted)}
+#list .em{font-size:20px;width:28px;text-align:center}
+.statbtn{cursor:pointer;border:1px solid transparent}.statbtn:hover{border-color:var(--accent)}
 .leg{font-size:12px;color:var(--muted);margin-top:8px}
 </style>
 </head>
@@ -151,7 +156,7 @@ li.item .n small{display:block;color:var(--muted)}
       <div class="stat"><span class="sub">Per dag</span><b id="sDay"></b></div>
     </div>
     <div class="stats" style="grid-template-columns:1fr 1fr;margin-top:8px">
-      <div class="stat"><span class="sub">Spenderat idag (utan fasta)</span><b id="sToday"></b></div>
+      <div class="stat statbtn" id="statToday" role="button" tabindex="0" title="Visa historik"><span class="sub">Spenderat idag (utan fasta) ›</span><b id="sToday"></b></div>
       <div class="stat"><span class="sub">Snitt per dag hittills (utan fasta)</span><b id="sAvg"></b></div>
     </div>
   </section>
@@ -196,10 +201,10 @@ li.item .n small{display:block;color:var(--muted)}
       </section>
       <section class="card">
         <div class="tabs" id="tabs">
-          <button data-v="period" class="on">I perioden</button>
+          <button data-v="today" class="on">Idag</button>
           <button data-v="rec">Fasta (varje månad)</button>
         </div>
-        <ul id="list"></ul>
+        <div id="list"></div>
       </section>
     </div>
   </div>
@@ -301,7 +306,7 @@ const writeLocal = () => { try{ localStorage.setItem(KEY, JSON.stringify(db)); }
 const save = () => { db.ts=Date.now(); writeLocal(); if(db.room) schedulePush(); scheduleCloud(); };
 const P = () => db.profiles[db.cur];
 
-let type="exp", cat="Mat", sub="", mode="now", editId=null, view="period";
+let type="exp", cat="Mat", sub="", mode="now", editId=null, view="today";
 
 // Datum för en post inom perioden (fasta: alla månadsförekomster, engångs: ett datum)
 function occurrences(it, start, end){
@@ -357,14 +362,10 @@ function render(){
 
   // lista
   document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===view));
-  let list;
-  if(view==="rec") list=p.items.filter(i=>i.rec).map(it=>({it,dates:null}));
-  else list=rows.slice().sort((a,b)=>a.dates[0]<b.dates[0]?-1:1);
-  $("list").innerHTML = list.length ? list.map(({it,dates})=>{
-    const sub = it.rec ? `${catLabel(it)} · den ${it.day}:e varje månad` : `${catLabel(it)} · ${it.date}`;
-    const n = dates && dates.length>1 ? ` ×${dates.length}` : "";
-    return `<li class="item" data-id="${it.id}"><span class="em">${icon(it.type,it.cat)}</span><span class="n">${esc(it.name||it.cat)}${n}<small>${esc(sub)}</small></span><b class="${it.type}">${it.type==="inc"?"+":"−"}${kr(it.amount)}</b><button class="ghost" data-del="${it.id}" title="Ta bort">✕</button></li>`;
-  }).join("") : `<div class="empty">${view==="rec"?"Inga fasta poster ännu.":"Inget i perioden ännu – lägg till till vänster."}</div>`;
+  if(view==="rec"){
+    const list=p.items.filter(i=>i.rec);
+    $("list").innerHTML = list.length ? "<ul>"+list.map(it=>`<li class="item" data-id="${it.id}"><span class="em">${icon(it.type,it.cat)}</span><span class="n">${esc(it.name||it.cat)}<small>${esc(catLabel(it))} · den ${it.day}:e varje månad</small></span><b class="${it.type}">${it.type==="inc"?"+":"−"}${kr(it.amount)}</b><button class="ghost" data-del="${it.id}" title="Ta bort">✕</button></li>`).join("")+"</ul>" : `<div class="empty">Inga fasta poster ännu.</div>`;
+  } else $("list").innerHTML=todayHtml();
   if(typeof page!=="undefined"){ if(page==="goal") renderGoal(); else if(page==="cmp") renderCmp(); }
 }
 
@@ -427,11 +428,36 @@ $("list").onclick=e=>{
   const del=e.target.closest("[data-del]");
   if(del){ P().items=P().items.filter(x=>x.id!==del.dataset.del); if(editId===del.dataset.del) resetForm(); save(); render(); return; }
   const li=e.target.closest("li.item"); if(!li) return;
-  const it=P().items.find(x=>x.id===li.dataset.id); if(!it) return;
+  const it=P().items.find(x=>x.id===li.dataset.id); if(it) editItem(it);
+};
+function editItem(it){
   editId=it.id; type=it.type; cat=it.cat; sub=it.sub||""; mode=it.rec?"fixed":"now";
   $("amount").value=it.amount; $("name").value=it.name; $("date").value=it.date; $("day").value=it.day;
   renderForm(); $("amount").focus(); scrollTo({top:0,behavior:"smooth"});
+}
+// ---- Historik över utgifter ----
+const dayLabel=d=>{
+  const t=iso(new Date()), y=iso(new Date(Date.now()-864e5));
+  const txt=new Date(d+"T00:00").toLocaleDateString("sv-SE",{weekday:"long",day:"numeric",month:"long"});
+  return (d===t?"Idag · ":d===y?"Igår · ":"")+txt;
 };
+function todayHtml(){
+  const p=P(), tod=iso(new Date()), by={};
+  p.items.forEach(it=>{ if(!it.rec) (by[it.date]=by[it.date]||[]).push(it); });
+  if(!by[tod]) by[tod]=[];
+  const days=Object.keys(by).sort().reverse(), future=days.filter(d=>d>tod).reverse(), past=days.filter(d=>d<=tod);
+  const row=it=>`<li class="item" data-id="${it.id}"><span class="em">${icon(it.type,it.cat)}</span><span class="n">${esc(it.name||it.cat)}<small>${esc(catLabel(it))}</small></span><b class="${it.type}">${it.type==="inc"?"+":"−"}${kr(it.amount)}</b><button class="ghost" data-del="${it.id}" title="Ta bort">✕</button></li>`;
+  const day=d=>{
+    const l=by[d].slice().reverse();
+    const ex=l.filter(i=>i.type==="exp").reduce((s,i)=>s+i.amount,0), inc=l.filter(i=>i.type==="inc").reduce((s,i)=>s+i.amount,0);
+    const tot=(ex?`<span class="exp">−${kr(ex)}</span> `:"")+(inc?`<span class="inc">+${kr(inc)}</span>`:"");
+    return `<div class="dh"><span>${esc(dayLabel(d))}${d>tod?" <small>kommande</small>":""}</span><span>${tot}</span></div>`+(l.length?`<ul>${l.map(row).join("")}</ul>`:`<div class="empty">Inget inlagt idag än.</div>`);
+  };
+  return past.map(day).join("")+(future.length?future.map(day).join(""):"");
+}
+const showToday=()=>{ view="today"; render(); $("tabs").scrollIntoView({behavior:"smooth",block:"start"}); };
+$("statToday").onclick=showToday;
+$("statToday").onkeydown=e=>{ if(e.key==="Enter"||e.key===" "){ e.preventDefault(); showToday(); } };
 $("start").onchange=e=>{P().start=e.target.value; save(); render();};
 $("payday").onchange=e=>{P().payday=e.target.value; save(); render();};
 $("bal").oninput=e=>{P().bal=parseFloat(e.target.value)||0; save(); render(); };
@@ -476,7 +502,7 @@ function calc(p){
 function sources(){
   const a=Object.entries(db.profiles).map(([id,p])=>({key:"p"+id,name:(id===db.cur?(db.username||p.name)+" (jag)":p.name),p,friend:false}));
   Object.entries(db.friends).forEach(([id,p])=>a.push({key:"f"+id,id,name:p.name,p,friend:true}));
-  Object.entries(live).forEach(([m,p])=>a.push({key:"l"+m,name:p.name+" 🟢",p,friend:false}));
+  Object.entries(live).forEach(([m,p])=>a.push({key:"l"+m,member:m,name:p.name+" 🟢",p,friend:false}));
   return a;
 }
 function renderCmp(){
@@ -486,7 +512,7 @@ function renderCmp(){
   src.forEach(x=>{ if(!known.has(x.key)){ known.add(x.key); picked.add(x.key); } });
   renderRoom();
   src.forEach((x,i)=>x.color=COLORS[i%COLORS.length]);
-  $("who").innerHTML=src.map(x=>`<label><input type="checkbox" data-k="${x.key}" ${picked.has(x.key)?"checked":""}><i style="background:${x.color}"></i>${esc(x.name)}${x.friend?`<button class="x" data-rm="${x.id}" title="Ta bort vän">✕</button>`:""}</label>`).join("");
+  $("who").innerHTML=src.map(x=>`<label><input type="checkbox" data-k="${x.key}" ${picked.has(x.key)?"checked":""}><i style="background:${x.color}"></i>${esc(x.name)}${x.friend?`<button class="x" data-rm="${x.id}" title="Ta bort vän">✕</button>`:""}${x.member?`<button class="x" data-kick="${esc(x.member)}" title="Ta bort ur rummet">✕</button>`:""}</label>`).join("");
   const sel=src.filter(x=>picked.has(x.key)).map(x=>({...x,c:calc(x.p)}));
   if(sel.length<1){ ["cards","chDay","chCat"].forEach(i=>$(i).innerHTML=`<div class="empty">Välj minst en person ovan.</div>`); return; }
   $("cards").innerHTML=sel.map(x=>{
@@ -587,7 +613,17 @@ function setPage(p){
 $("nav").onclick=e=>{const b=e.target.closest("button"); if(b) setPage(b.dataset.p);};
 $("kindSeg").onclick=e=>{const b=e.target.closest("button"); if(b){kind=b.dataset.k; renderCmp();}};
 $("catMode").onclick=e=>{const b=e.target.closest("button"); if(b){catMode=b.dataset.m; renderCmp();}};
-$("who").onclick=e=>{
+$("who").onclick=async e=>{
+  const kick=e.target.closest("[data-kick]");
+  if(kick){
+    e.preventDefault();
+    if(confirm("Ta bort den här personen ur rummet? Den dyker upp igen nästa gång de lägger in något.")){
+      const m=kick.dataset.kick; delete live[m]; picked=null;
+      try{ await sb("leave_room",{r:db.room.name,m}); }catch(err){}
+      renderCmp();
+    }
+    return;
+  }
   const rm=e.target.closest("[data-rm]");
   if(rm){ e.preventDefault(); if(confirm("Ta bort vännen?")){ delete db.friends[rm.dataset.rm]; picked=null; save(); renderCmp(); } return; }
   const c=e.target.closest("input[data-k]"); if(!c) return;
@@ -619,7 +655,14 @@ function pull(){
     setSync("ok"); if(page==="cmp") renderCmp();
   }).catch(()=>setSync("err"));
 }
+function adoptAccountId(){
+  // inloggad: använd kontots id i rummet, så alla dina enheter blir en och samma person
+  if(!auth||!auth.uid||!db.room||db.room.member===auth.uid) return;
+  const old=db.room.member; db.room.member=auth.uid; writeLocal();
+  if(sbOn()) sb("leave_room",{r:db.room.name,m:old}).catch(()=>{});
+}
 function startSync(){
+  adoptAccountId();
   clearInterval(pollT); if(!sbOn()||!db.room) return;
   push().then(pull); pollT=setInterval(pull,5000);
 }
@@ -638,7 +681,7 @@ $("room").onclick=async e=>{
     db.username=u.slice(0,30);
     const n=$("roomName").value.trim().toLowerCase();
     if(n.length<6){ alert("Rumsnamnet måste vara minst 6 tecken."); return; }
-    db.room={name:n,member:uid()+uid(),pid:db.cur}; save(); roomHtml=""; renderCmp(); startSync();
+    db.room={name:n,member:(auth&&auth.uid)||(uid()+uid()),pid:db.cur}; save(); roomHtml=""; renderCmp(); startSync();
   }
   if(e.target.id==="roomLeave"){
     if(!confirm("Lämna rummet? Din delade data tas bort därifrån.")) return;
@@ -707,6 +750,7 @@ async function cloudPull(){
   renderAcct();
 }
 function startCloud(){
+  if(db.room&&auth&&auth.uid&&db.room.member!==auth.uid){ adoptAccountId(); push().then(pull); }
   clearInterval(cloudPoll); if(!sbOn()||!auth) return;
   cloudPull(); cloudPoll=setInterval(()=>{ if(!document.hidden) cloudPull(); },20000);
 }
