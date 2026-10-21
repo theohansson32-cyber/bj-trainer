@@ -553,7 +553,6 @@ $("who").onclick=e=>{
 // ---- Live-synk via Supabase (se setup.sql) ----
 const SB_URL="https://xhxkyongmcduyibhkwby.supabase.co", SB_KEY="sb_publishable_DyyjT6peOtnrtt86U0AXTA_yZYvy-qc";   // fylls i en gång, se instruktioner
 const live={}; let pushT=null, pollT=null, syncState="";
-const live={}; let pushT=null, pollT=null, syncState="";
 const sbOn=()=>!!(SB_URL&&SB_KEY);
 function sb(fn,body){
   const h={"Content-Type":"application/json",apikey:SB_KEY};
