@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kvar till lön</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2563eb">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Kvar till lön">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>
+:root{
+  --bg:#f5f6f8;--card:#fff;--text:#1b1f27;--muted:#6b7280;--line:#e5e7eb;
+  --accent:#2563eb;--inc:#16a34a;--exp:#dc2626;--chip:#eef1f6;
+}
+@media (prefers-color-scheme:dark){
+  :root{--bg:#0f1115;--card:#181b22;--text:#eceff4;--muted:#9aa3b2;--line:#272c36;--accent:#5b8cff;--inc:#34d399;--exp:#f87171;--chip:#222733}
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.wrap{max-width:960px;margin:0 auto;padding:16px}
+header{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+h1{font-size:20px;margin:0;flex:1;min-width:140px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px}
+.card h2{font-size:13px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);margin:0 0 12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
+@media(max-width:760px){.grid{grid-template-columns:1fr}}
+input,select,button{font:inherit;color:inherit}
+input,select{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+label{display:block;font-size:13px;color:var(--muted);margin-bottom:4px}
+.row{display:flex;gap:12px}.row>*{flex:1}
+button{border:1px solid var(--line);background:var(--card);border-radius:10px;padding:9px 14px;cursor:pointer}
+button.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600;width:100%;padding:12px}
+button.ghost{border:none;background:none;color:var(--muted);padding:4px 8px}
+button.ghost:hover{color:var(--exp)}
+.seg{display:flex;background:var(--chip);border-radius:10px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:none;background:none;border-radius:8px;padding:8px}
+.seg button.on{background:var(--card);font-weight:600;box-shadow:0 1px 2px #0002}
+.seg button.on.exp{color:var(--exp)}.seg button.on.inc{color:var(--inc)}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{border-radius:999px;padding:6px 12px;background:var(--chip);border:2px solid transparent;font-size:14px}
+.chip.on{border-color:var(--accent);font-weight:600}
+.f{margin-bottom:12px}
+.check{display:flex;align-items:center;gap:8px;margin-bottom:12px;color:var(--text);font-size:15px;cursor:pointer}
+.check input{width:auto}
+.big{font-size:44px;font-weight:700;line-height:1.1;margin:4px 0}
+.big.neg{color:var(--exp)}.big.pos{color:var(--inc)}
+.sub{color:var(--muted);font-size:14px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}
+.stat{background:var(--bg);border-radius:10px;padding:10px}
+.stat b{display:block;font-size:17px}
+.inc{color:var(--inc)}.exp{color:var(--exp)}
+.bar{margin-bottom:10px}
+.bar .t{display:flex;justify-content:space-between;font-size:14px;margin-bottom:3px}
+.bar .tr{height:8px;background:var(--chip);border-radius:6px;overflow:hidden}
+.bar .tr i{display:block;height:100%;background:var(--accent);border-radius:6px}
+ul{list-style:none;margin:0;padding:0}
+li.item{display:flex;align-items:center;gap:10px;padding:10px 0;border-top:1px solid var(--line);cursor:pointer}
+li.item:first-child{border-top:none}
+li.item .em{font-size:20px;width:28px;text-align:center}
+li.item .n{flex:1;min-width:0}
+li.item .n small{display:block;color:var(--muted)}
+.empty{color:var(--muted);font-size:14px;padding:6px 0}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tabs button{border:none;background:none;color:var(--muted);padding:4px 10px;border-radius:8px}
+.tabs button.on{background:var(--chip);color:var(--text);font-weight:600}
+.nav{display:flex;gap:6px;margin-bottom:16px}
+.nav button{flex:1;padding:11px;font-weight:600;border-radius:12px}
+.nav button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.who{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.who label{display:flex;align-items:center;gap:6px;margin:0;color:var(--text);font-size:14px;background:var(--chip);border-radius:999px;padding:6px 12px;cursor:pointer}
+.who label input{width:auto}
+.who i{width:10px;height:10px;border-radius:50%;display:inline-block}
+.who .x{border:none;background:none;color:var(--muted);padding:0 0 0 4px;cursor:pointer}
+.cmp{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.pc{background:var(--bg);border-radius:12px;padding:12px;border-top:4px solid var(--c)}
+.pc b.k{font-size:22px;display:block}
+.pc .l{display:flex;justify-content:space-between;font-size:14px;color:var(--muted);margin-top:4px}
+.pc .l span:last-child{color:var(--text)}
+.hb{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px}
+.hb .nm{width:84px;flex:none;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hb .tr{flex:1;height:14px;background:var(--chip);border-radius:6px;overflow:hidden}
+.hb .tr i{display:block;height:100%;border-radius:6px;background:var(--c)}
+.hb .v{width:78px;flex:none;text-align:right}
+.cg{margin-bottom:14px}.cg .h{font-weight:600;margin-bottom:4px;font-size:14px}
+.row2{display:flex;gap:8px}.row2 input{flex:1}.row2 button{flex:none}
+.note{font-size:13px;color:var(--muted);margin:8px 0 0}
+.toggle{display:inline-flex;margin-bottom:12px}
+.gr{padding:10px 0;border-top:1px solid var(--line)}.gr:first-child{border-top:none}
+.gr .top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.gr .top .n{flex:1}
+.gr .top input{width:110px;text-align:right}
+.gt{position:relative;height:12px;background:var(--chip);border-radius:6px;overflow:hidden}
+.gt i{position:absolute;left:0;top:0;bottom:0;border-radius:6px}
+.gt i.pr{background:var(--c);opacity:.3}.gt i.sp{background:var(--c)}
+.gt u{position:absolute;top:0;bottom:0;width:3px;background:var(--text)}
+.gr .meta{display:flex;justify-content:space-between;gap:8px;font-size:13px;color:var(--muted);margin-top:4px;flex-wrap:wrap}
+.ok{--c:var(--inc)}.warn{--c:#f59e0b}.bad{--c:var(--exp)}.none{--c:var(--accent)}
+.msg{font-size:15px;margin:10px 0 0}
+.leg{font-size:12px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>💸 Kvar till lön</h1>
+    <select id="profSel" style="width:auto"></select>
+    <button id="profNew" title="Ny profil">＋ Profil</button>
+    <button id="profRen" title="Byt namn">✎</button>
+    <button id="profDel" title="Ta bort profil">🗑</button>
+    <button id="bkExp" title="Spara säkerhetskopia till fil">💾</button>
+    <button id="bkImp" title="Läs in säkerhetskopia">📂</button>
+    <input type="file" id="bkFile" accept=".json,application/json" hidden>
+  </header>
+
+  <div class="nav" id="nav">
+    <button data-p="budget" class="on">Budget</button>
+    <button data-p="goal">Budgetmål</button>
+    <button data-p="cmp">Jämför</button>
+  </div>
+
+<div id="pageBudget">
+  <section class="card">
+    <h2>Period</h2>
+    <div class="row">
+      <div><label for="start">Beräkningen börjar</label><input type="date" id="start"></div>
+      <div><label for="payday">Nästa lön</label><input type="date" id="payday"></div>
+      <div><label for="bal">Saldo på kontot (valfritt)</label><input type="number" id="bal" inputmode="decimal" placeholder="0"></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Du har kvar till nästa lön</h2>
+    <div class="big" id="left">–</div>
+    <div class="sub" id="leftSub"></div>
+    <div class="stats">
+      <div class="stat"><span class="sub">Inkomster</span><b class="inc" id="sInc"></b></div>
+      <div class="stat"><span class="sub">Utgifter</span><b class="exp" id="sExp"></b></div>
+      <div class="stat"><span class="sub">Per dag</span><b id="sDay"></b></div>
+    </div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <h2 id="formTitle">Lägg till</h2>
+      <form id="form" autocomplete="off">
+        <div class="seg" id="modeSeg">
+          <button type="button" data-m="now" class="on">Nu direkt</button>
+          <button type="button" data-m="fixed">Fasta</button>
+        </div>
+        <div class="seg" id="typeSeg">
+          <button type="button" data-t="exp" class="on exp">Utgift</button>
+          <button type="button" data-t="inc">Inkomst</button>
+        </div>
+        <div class="row f">
+          <div><label for="amount">Belopp (kr)</label><input id="amount" type="number" inputmode="decimal" min="0" step="any" required placeholder="0"></div>
+          <div><label for="name">Namn</label><input id="name" placeholder="t.ex. Hyra"></div>
+        </div>
+        <label>Kategori</label>
+        <div class="chips" id="cats" style="margin-bottom:6px"></div>
+        <label>Underkategori (valfritt)</label>
+        <div class="chips" id="subs"></div>
+        <div class="f" id="dateBox">
+          <label for="date">Datum</label>
+          <input type="date" id="date">
+        </div>
+        <div class="f" id="dayBox" hidden>
+          <label for="day">Dras den dagen varje månad</label>
+          <input type="number" id="day" min="1" max="31" value="1">
+        </div>
+        <button class="primary" id="submit">Lägg till</button>
+        <button type="button" class="ghost" id="cancel" hidden style="width:100%;margin-top:6px">Avbryt redigering</button>
+      </form>
+    </section>
+
+    <div>
+      <section class="card">
+        <h2>Per kategori</h2>
+        <div id="bars"></div>
+      </section>
+      <section class="card">
+        <div class="tabs" id="tabs">
+          <button data-v="period" class="on">I perioden</button>
+          <button data-v="rec">Fasta (varje månad)</button>
+        </div>
+        <ul id="list"></ul>
+      </section>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="pageGoal" hidden>
+  <section class="card">
+    <h2>Budget vs prognos</h2>
+    <div class="big" id="gMain">–</div>
+    <div class="sub" id="gSub"></div>
+    <div class="stats">
+      <div class="stat"><span class="sub">Budget</span><b id="gBud"></b></div>
+      <div class="stat"><span class="sub">Hittills</span><b id="gSp"></b></div>
+      <div class="stat"><span class="sub">Prognos</span><b id="gPr"></b></div>
+    </div>
+    <p class="msg" id="gMsg"></p>
+  </section>
+  <section class="card">
+    <h2>Sätt din budget för perioden</h2>
+    <p class="note" style="margin:0 0 8px">Skriv hur mycket du vill max lägga per kategori fram till nästa lön. Tomt = ingen gräns.</p>
+    <button id="gFill" style="margin-bottom:8px">✨ Fyll i från min prognos</button>
+    <div id="gRows"></div>
+    <div class="leg">Heldragen stapel = spenderat hittills · blek = prognos · svart streck = budget</div>
+  </section>
+</div>
+
+<div id="pageCmp" hidden>
+  <section class="card">
+    <h2>Vem vill du jämföra?</h2>
+    <div class="who" id="who"></div>
+    <div id="room"></div>
+    <label for="code">Eller lägg till vän manuellt – klistra in vännens kod</label>
+    <div class="row2">
+      <input id="code" placeholder="Klistra in kod här">
+      <button id="addFriend">Lägg till</button>
+    </div>
+    <p class="note">Vännen trycker på <b>Kopiera min kod</b> i sin app och skickar koden till dig. Koden är en ögonblicksbild – be om en ny kod när något ändrats. Allt stannar i din webbläsare.</p>
+    <button id="myCode" style="margin-top:10px">📋 Kopiera min kod</button>
+  </section>
+  <section class="card">
+    <h2>Översikt</h2>
+    <div class="cmp" id="cards"></div>
+  </section>
+  <section class="card">
+    <h2>Utgifter per dag</h2>
+    <div id="chDay"></div>
+    <p class="note">Perioderna kan vara olika långa, så per dag är det rättvisaste måttet.</p>
+  </section>
+  <section class="card">
+    <h2>Per kategori</h2>
+    <div class="seg toggle" id="catMode"><button type="button" data-m="day" class="on">Per dag</button><button type="button" data-m="tot">Totalt</button></div>
+    <div id="chCat"></div>
+  </section>
+</div>
+
+<script>
+const CATS = {
+  now: {
+    exp: [["Mat","🛒"],["Utemat","🍔"],["Kaffe/fika","☕"],["Alkohol","🍺"],["Snus","📦"],["Nöje","🎉"],["Transport","🚗"],["Shopping","🛍️"],["Hälsa","💊"],["Övrigt","🧩"]],
+    inc: [["Lön","💼"],["Swish","📲"],["Bidrag","🏛️"],["Övrigt","🧩"]]
+  },
+  fixed: {
+    exp: [["Boende","🏠"],["Räkningar","🧾"],["Abonnemang","📺"],["Försäkring","🛡️"],["Lån","🏦"],["Transport","🚗"],["Mat","🛒"],["Sparande","🐷"],["Övrigt","🧩"]],
+    inc: [["Lön","💼"],["Bidrag","🏛️"],["Övrigt","🧩"]]
+  }
+};
+const icon = (t,c)=>{ for(const m of ["now","fixed"]){ const x=CATS[m][t].find(x=>x[0]===c); if(x) return x[1]; } return "🧩"; };
+const KEY = "kvarTillLon.v1";
+const iso = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+const kr = n => Math.round(n).toLocaleString("sv-SE")+" kr";
+const esc = s => String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid = () => Math.random().toString(36).slice(2,10);
+const $ = id => document.getElementById(id);
+
+function defaults(){
+  const t = new Date(), s = iso(t);
+  let p = new Date(t.getFullYear(), t.getMonth(), 25);
+  if (p <= t) p = new Date(t.getFullYear(), t.getMonth()+1, 25);
+  return {budget:{}, subs:{}, name:"Min profil", start:s, payday:iso(p), bal:0, items:[]};
+}
+let db;
+try { db = JSON.parse(localStorage.getItem(KEY)); } catch(e){}
+if (!db || !db.profiles || typeof db.profiles!=="object" || !Object.keys(db.profiles).length){ const id=uid(); db={cur:id, profiles:{[id]:defaults()}}; }
+if (!Array.isArray(db.profiles)) {} // object map
+if(!db.profiles[db.cur]) db.cur=Object.keys(db.profiles)[0];
+if(!db.friends) db.friends={};
+Object.values(db.profiles).forEach(p=>{ if(!p.budget) p.budget={}; if(!p.subs) p.subs={}; });
+const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(db)); }catch(e){} if(db.room) schedulePush(); };
+const P = () => db.profiles[db.cur];
+
+let type="exp", cat="Mat", sub="", mode="now", editId=null, view="period";
+
+// Datum för en post inom perioden (fasta: alla månadsförekomster, engångs: ett datum)
+function occurrences(it, start, end){
+  if (!it.rec) return (it.date>=start && it.date<end) ? [it.date] : [];
+  const out=[], s=new Date(start+"T00:00"), e=new Date(end+"T00:00");
+  for (let y=s.getFullYear(), m=s.getMonth(); y<e.getFullYear() || (y===e.getFullYear() && m<=e.getMonth()); m++){
+    if (m>11){ m=0; y++; if (y>e.getFullYear()) break; }
+    const dim = new Date(y,m+1,0).getDate();
+    const d = iso(new Date(y,m,Math.min(it.day,dim)));
+    if (d>=start && d<end) out.push(d);
+  }
+  return out;
+}
+
+function render(){
+  const p=P(), start=p.start, end=p.payday;
+  $("start").value=start; $("payday").value=end; $("bal").value=p.bal||"";
+  // profilval
+  $("profSel").innerHTML = Object.entries(db.profiles).map(([id,x])=>`<option value="${id}" ${id===db.cur?"selected":""}>${esc(x.name)}</option>`).join("");
+
+  const valid = start && end && end>start;
+  const rows=[]; // {it, dates}
+  if (valid) p.items.forEach(it=>{ const d=occurrences(it,start,end); if(d.length) rows.push({it,dates:d}); });
+  let inc=0, exp=0; const byCat={};
+  rows.forEach(({it,dates})=>{
+    const a=it.amount*dates.length;
+    if(it.type==="inc") inc+=a; else { exp+=a; byCat[it.cat]=(byCat[it.cat]||0)+a; }
+  });
+  const left=(Number(p.bal)||0)+inc-exp;
+  const el=$("left");
+  if(!valid){ el.textContent="–"; el.className="big"; $("leftSub").textContent="Välj ett startdatum och en lönedag efter det."; }
+  else {
+    el.textContent=kr(left); el.className="big "+(left<0?"neg":"pos");
+    const today=iso(new Date()), from = today>start?today:start;
+    const days=Math.max(1,Math.round((new Date(end+"T00:00")-new Date(from+"T00:00"))/864e5));
+    $("leftSub").textContent=`${days} dagar kvar till lön (${end})`;
+    $("sDay").textContent=kr(left/days);
+  }
+  $("sInc").textContent=kr(inc); $("sExp").textContent=kr(exp);
+  if(!valid) $("sDay").textContent="–";
+
+  // kategorier
+  const cats=Object.entries(byCat).sort((a,b)=>b[1]-a[1]), max=cats.length?cats[0][1]:1;
+  $("bars").innerHTML = cats.length ? cats.map(([c,v])=>`<div class="bar"><div class="t"><span>${icon("exp",c)} ${esc(c)}</span><span>${kr(v)}</span></div><div class="tr"><i style="width:${v/max*100}%"></i></div></div>`).join("") : `<div class="empty">Inga utgifter i perioden ännu.</div>`;
+
+  // lista
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===view));
+  let list;
+  if(view==="rec") list=p.items.filter(i=>i.rec).map(it=>({it,dates:null}));
+  else list=rows.slice().sort((a,b)=>a.dates[0]<b.dates[0]?-1:1);
+  $("list").innerHTML = list.length ? list.map(({it,dates})=>{
+    const sub = it.rec ? `${catLabel(it)} · den ${it.day}:e varje månad` : `${catLabel(it)} · ${it.date}`;
+    const n = dates && dates.length>1 ? ` ×${dates.length}` : "";
+    return `<li class="item" data-id="${it.id}"><span class="em">${icon(it.type,it.cat)}</span><span class="n">${esc(it.name||it.cat)}${n}<small>${esc(sub)}</small></span><b class="${it.type}">${it.type==="inc"?"+":"−"}${kr(it.amount)}</b><button class="ghost" data-del="${it.id}" title="Ta bort">✕</button></li>`;
+  }).join("") : `<div class="empty">${view==="rec"?"Inga fasta poster ännu.":"Inget i perioden ännu – lägg till till vänster."}</div>`;
+  if(typeof page!=="undefined"){ if(page==="goal") renderGoal(); else if(page==="cmp") renderCmp(); }
+}
+
+const subsOf=(t,c)=>{ const p=P(), o=(p.subs&&p.subs[c]||[]).slice(); p.items.forEach(i=>{ if(i.cat===c&&i.sub&&!o.includes(i.sub)) o.push(i.sub); }); return o; };
+const catLabel=it=>it.cat+(it.sub?" › "+it.sub:"");
+function renderForm(){
+  document.querySelectorAll("#modeSeg button").forEach(b=>b.classList.toggle("on",b.dataset.m===mode));
+  document.querySelectorAll("#typeSeg button").forEach(b=>{b.classList.toggle("on",b.dataset.t===type); b.classList.toggle(b.dataset.t,true);});
+  const list=CATS[mode][type].slice();
+  if(!list.some(c=>c[0]===cat)) { if(editId) list.push([cat,icon(type,cat)]); else cat=list[0][0]; }
+  $("cats").innerHTML=list.map(([c,e])=>`<button type="button" class="chip ${c===cat?"on":""}" data-c="${c}">${e} ${c}</button>`).join("");
+  const sl=type==="exp"?subsOf(type,cat):[];
+  if(sub&&!sl.includes(sub)) sub="";
+  $("subs").innerHTML=(type==="exp"?`<button type="button" class="chip ${sub?"":"on"}" data-s="">Ingen</button>`+sl.map(x=>`<button type="button" class="chip ${x===sub?"on":""}" data-s="${esc(x)}">${esc(x)}</button>`).join("")+`<button type="button" class="chip" data-new="1">＋ Egen</button>`:`<span class="sub">Underkategorier finns för utgifter.</span>`);
+  $("dateBox").hidden = mode==="fixed"; $("dayBox").hidden = mode==="now";
+  $("submit").textContent = editId ? "Spara ändring" : (type==="inc"?"Lägg till inkomst":"Lägg till utgift");
+  $("formTitle").textContent = editId ? "Redigera" : (mode==="fixed"?"Ny fast post":"Ny post – nu direkt");
+  $("cancel").hidden=!editId;
+}
+function resetForm(){
+  editId=null; $("amount").value=""; $("name").value=""; $("date").value=iso(new Date()); $("day").value=new Date().getDate();
+  renderForm(); $("amount").focus();
+}
+
+// händelser
+$("typeSeg").onclick=e=>{const b=e.target.closest("button"); if(!b)return; type=b.dataset.t; renderForm();};
+$("subs").onclick=e=>{
+  const b=e.target.closest("button"); if(!b) return;
+  if(b.dataset.new){
+    const n=(prompt(`Ny underkategori under "${cat}":`)||"").trim().slice(0,30); if(!n) return;
+    const p=P(); p.subs[cat]=p.subs[cat]||[]; if(!p.subs[cat].includes(n)) p.subs[cat].push(n);
+    sub=n;
+  } else sub=b.dataset.s;
+  renderForm();
+};
+$("cats").onclick=e=>{const b=e.target.closest("button"); if(!b)return; cat=b.dataset.c; sub=""; renderForm(); if(!$("name").value) $("name").placeholder=cat;};
+$("modeSeg").onclick=e=>{const b=e.target.closest("button"); if(!b||editId)return; mode=b.dataset.m; renderForm();};
+$("tabs").onclick=e=>{const b=e.target.closest("button"); if(!b)return; view=b.dataset.v; render();};
+$("cancel").onclick=resetForm;
+$("form").onsubmit=e=>{
+  e.preventDefault();
+  const amount=parseFloat($("amount").value); if(!(amount>0)) return;
+  const rec=mode==="fixed";
+  const date=$("date").value||iso(new Date()), day=Math.min(31,Math.max(1,parseInt($("day").value)||1));
+  const it={id:editId||uid(), type, cat, name:$("name").value.trim()||sub||cat, sub:type==="exp"?sub:"", amount, rec, date:rec?(P().start||date):date, day};
+  const items=P().items;
+  const i=items.findIndex(x=>x.id===editId);
+  if(i>=0) items[i]=it; else items.push(it);
+  save(); resetForm(); render();
+};
+$("list").onclick=e=>{
+  const del=e.target.closest("[data-del]");
+  if(del){ P().items=P().items.filter(x=>x.id!==del.dataset.del); if(editId===del.dataset.del) resetForm(); save(); render(); return; }
+  const li=e.target.closest("li.item"); if(!li) return;
+  const it=P().items.find(x=>x.id===li.dataset.id); if(!it) return;
+  editId=it.id; type=it.type; cat=it.cat; sub=it.sub||""; mode=it.rec?"fixed":"now";
+  $("amount").value=it.amount; $("name").value=it.name; $("date").value=it.date; $("day").value=it.day;
+  renderForm(); $("amount").focus(); scrollTo({top:0,behavior:"smooth"});
+};
+$("start").onchange=e=>{P().start=e.target.value; save(); render();};
+$("payday").onchange=e=>{P().payday=e.target.value; save(); render();};
+$("bal").oninput=e=>{P().bal=parseFloat(e.target.value)||0; save(); render(); };
+$("profSel").onchange=e=>{db.cur=e.target.value; save(); resetForm(); render();};
+$("profNew").onclick=()=>{
+  const n=prompt("Namn på ny profil:"); if(!n) return;
+  const id=uid(); db.profiles[id]={...defaults(), name:n}; db.cur=id; save(); resetForm(); render();
+};
+$("profRen").onclick=()=>{ const n=prompt("Nytt namn:", P().name); if(n){P().name=n; save(); render();} };
+$("profDel").onclick=()=>{
+  if(Object.keys(db.profiles).length<2){ alert("Du måste ha minst en profil."); return; }
+  if(!confirm(`Ta bort profilen "${P().name}"?`)) return;
+  delete db.profiles[db.cur]; db.cur=Object.keys(db.profiles)[0]; save(); resetForm(); render();
+};
+
+
+// ---- Jämför ----
+const COLORS=["#2563eb","#f59e0b","#10b981","#ec4899","#8b5cf6","#14b8a6","#ef4444"];
+let page="budget", catMode="day", picked=null;
+function calc(p){
+  const start=p.start,end=p.payday, valid=!!(start&&end&&end>start);
+  let inc=0,exp=0; const byCat={};
+  if(valid) p.items.forEach(it=>{
+    const n=occurrences(it,start,end).length; if(!n) return;
+    const a=it.amount*n;
+    if(it.type==="inc") inc+=a; else { exp+=a; byCat[it.cat]=(byCat[it.cat]||0)+a; }
+  });
+  const len=valid?Math.round((new Date(end+"T00:00")-new Date(start+"T00:00"))/864e5):1;
+  return {inc,exp,byCat,len,left:(Number(p.bal)||0)+inc-exp};
+}
+function sources(){
+  const a=Object.entries(db.profiles).map(([id,p])=>({key:"p"+id,name:p.name+(id===db.cur?" (jag)":""),p,friend:false}));
+  Object.entries(db.friends).forEach(([id,p])=>a.push({key:"f"+id,id,name:p.name,p,friend:true}));
+  Object.entries(live).forEach(([m,p])=>a.push({key:"l"+m,name:p.name+" 🟢",p,friend:false}));
+  return a;
+}
+function renderCmp(){
+  const src=sources();
+  if(!picked) picked=new Set();
+  const known=renderCmp.known||(renderCmp.known=new Set());
+  src.forEach(x=>{ if(!known.has(x.key)){ known.add(x.key); picked.add(x.key); } });
+  renderRoom();
+  src.forEach((x,i)=>x.color=COLORS[i%COLORS.length]);
+  $("who").innerHTML=src.map(x=>`<label><input type="checkbox" data-k="${x.key}" ${picked.has(x.key)?"checked":""}><i style="background:${x.color}"></i>${esc(x.name)}${x.friend?`<button class="x" data-rm="${x.id}" title="Ta bort vän">✕</button>`:""}</label>`).join("");
+  const sel=src.filter(x=>picked.has(x.key)).map(x=>({...x,c:calc(x.p)}));
+  if(sel.length<1){ ["cards","chDay","chCat"].forEach(i=>$(i).innerHTML=`<div class="empty">Välj minst en person ovan.</div>`); return; }
+  $("cards").innerHTML=sel.map(x=>{
+    const sv=x.c.inc>0?Math.round((x.c.inc-x.c.exp)/x.c.inc*100)+" %":"–";
+    return `<div class="pc" style="--c:${x.color}"><div class="sub">${esc(x.name)}</div><b class="k ${x.c.left<0?"exp":"inc"}">${kr(x.c.left)}</b><div class="sub">kvar till lön</div>
+    <div class="l"><span>Inkomster</span><span>${kr(x.c.inc)}</span></div>
+    <div class="l"><span>Utgifter</span><span>${kr(x.c.exp)}</span></div>
+    <div class="l"><span>Kvar av inkomst</span><span>${sv}</span></div>
+    <div class="l"><span>Period</span><span>${x.c.len} dagar</span></div></div>`;}).join("");
+  const bars=(rows,fmt)=>{const m=Math.max(...rows.map(r=>r.v),1);return rows.map(r=>`<div class="hb" style="--c:${r.color}"><span class="nm">${esc(r.name)}</span><span class="tr"><i style="width:${r.v/m*100}%"></i></span><span class="v">${fmt(r.v)}</span></div>`).join("");};
+  $("chDay").innerHTML=bars(sel.map(x=>({name:x.name,color:x.color,v:x.c.exp/x.c.len})),v=>kr(v)+"/dag");
+  const cats=[...new Set(sel.flatMap(x=>Object.keys(x.c.byCat)))];
+  const div=x=>catMode==="day"?x.c.len:1;
+  cats.sort((a,b)=>sel.reduce((s,x)=>s+(x.c.byCat[b]||0)/div(x),0)-sel.reduce((s,x)=>s+(x.c.byCat[a]||0)/div(x),0));
+  $("chCat").innerHTML=cats.length?cats.map(c=>{
+    const rows=sel.map(x=>({name:x.name,color:x.color,v:(x.c.byCat[c]||0)/div(x)}));
+    return `<div class="cg"><div class="h">${icon("exp",c)} ${esc(c)}</div>${bars(rows,v=>kr(v))}</div>`;}).join(""):`<div class="empty">Inga utgifter att jämföra ännu.</div>`;
+  document.querySelectorAll("#catMode button").forEach(b=>b.classList.toggle("on",b.dataset.m===catMode));
+}
+// ---- Budgetmål ----
+const ALLCATS=()=>{ const o=[]; for(const m of ["now","fixed"]) CATS[m].exp.forEach(c=>{ if(!o.includes(c[0])) o.push(c[0]); }); P().items.forEach(i=>{ if(i.type==="exp"&&!o.includes(i.cat)) o.push(i.cat); }); return o; };
+function forecast(p){
+  const start=p.start,end=p.payday, tod=iso(new Date()), out={};
+  if(!(start&&end&&end>start)) return {valid:false,out};
+  const day=86400000, len=Math.round((new Date(end+"T00:00")-new Date(start+"T00:00"))/day);
+  const elapsed=Math.min(len,Math.max(0,Math.round((new Date(tod+"T00:00")-new Date(start+"T00:00"))/day)+1));
+  p.items.forEach(it=>{
+    if(it.type!=="exp") return;
+    const o=out[it.cat]||(out[it.cat]={spent:0,planned:0,varSpent:0,subs:{}});
+    occurrences(it,start,end).forEach(d=>{
+      if(it.sub) o.subs[it.sub]=(o.subs[it.sub]||0)+it.amount;
+      if(d<=tod){ o.spent+=it.amount; if(!it.rec) o.varSpent+=it.amount; } else o.planned+=it.amount;
+    });
+  });
+  Object.values(out).forEach(o=>{ o.proj=o.spent+o.planned+(elapsed>0?o.varSpent/elapsed*(len-elapsed):0); });
+  return {valid:true,out,len,elapsed};
+}
+function renderGoal(){
+  const p=P(), f=forecast(p), bud=p.budget||(p.budget={}), cats=ALLCATS();
+  const ae=document.activeElement, keep=ae&&ae.dataset&&ae.dataset.g;
+  let tb=0,ts=0,tp=0;
+  const rows=cats.map(c=>{
+    const o=f.out[c]||{spent:0,proj:0}, b=bud[c]>0?bud[c]:0;
+    ts+=o.spent; tp+=o.proj; tb+=b;
+    const max=Math.max(b,o.proj,o.spent,1);
+    const cls=!b?"none":(o.spent>b||o.proj>b)?"bad":(o.proj>b*0.9?"warn":"ok");
+    const st=!b?"":(o.proj>b?`Prognos ${kr(o.proj-b)} över`:`${kr(b-o.proj)} marginal`);
+    return `<div class="gr ${cls}"><div class="top"><span class="n">${icon("exp",c)} ${esc(c)}</span><input type="number" min="0" inputmode="decimal" placeholder="Budget" data-g="${esc(c)}" value="${b||""}"></div>
+    <div class="gt"><i class="pr" style="width:${o.proj/max*100}%"></i><i class="sp" style="width:${o.spent/max*100}%"></i>${b?`<u style="left:calc(${b/max*100}% - 2px)"></u>`:""}</div>
+    <div class="meta"><span>Hittills ${kr(o.spent)} · Prognos ${kr(o.proj)}</span><span>${st}</span></div>${Object.keys(o.subs||{}).length?`<div class="meta"><span>${Object.entries(o.subs).map(([k,v])=>esc(k)+" "+kr(v)).join(" · ")}</span></div>`:""}</div>`;
+  });
+  $("gRows").innerHTML=rows.join("");
+  if(keep){ const el=$("gRows").querySelector(`input[data-g="${CSS.escape(keep)}"]`); if(el){ el.focus(); const v=el.value; el.value=""; el.value=v; } }
+  if(!f.valid){ $("gMain").textContent="–"; $("gMain").className="big"; $("gSub").textContent="Välj period under fliken Budget."; $("gMsg").textContent=""; }
+  else {
+    $("gBud").textContent=tb?kr(tb):"–"; $("gSp").textContent=kr(ts); $("gPr").textContent=kr(tp);
+    if(tb>0){
+      const diff=tb-tp;
+      $("gMain").textContent=(diff>=0?"+":"−")+kr(Math.abs(diff)); $("gMain").className="big "+(diff>=0?"pos":"neg");
+      $("gSub").textContent=diff>=0?"under budget enligt prognos":"över budget enligt prognos";
+      const over=cats.filter(c=>bud[c]>0&&f.out[c]&&f.out[c].proj>bud[c]).map(c=>c);
+      $("gMsg").textContent=over.length?`Se upp med: ${over.join(", ")}.`:"Alla kategorier ser ut att hålla sig inom budget. 👍";
+    } else { $("gMain").textContent=kr(tp); $("gMain").className="big"; $("gSub").textContent="prognosticerade utgifter – sätt en budget nedan"; $("gMsg").textContent=""; }
+  }
+}
+$("gRows").oninput=e=>{
+  const c=e.target.dataset.g; if(!c) return;
+  const v=parseFloat(e.target.value); if(v>0) P().budget[c]=v; else delete P().budget[c];
+  save(); renderGoal();
+};
+$("gFill").onclick=()=>{
+  const f=forecast(P()); if(!f.valid) return;
+  P().budget={}; Object.entries(f.out).forEach(([c,o])=>{ if(o.proj>0) P().budget[c]=Math.ceil(o.proj/100)*100; });
+  save(); renderGoal();
+};
+
+function setPage(p){
+  page=p; $("pageBudget").hidden=p!=="budget"; $("pageCmp").hidden=p!=="cmp"; $("pageGoal").hidden=p!=="goal";
+  if(p==="goal") renderGoal();
+  document.querySelectorAll("#nav button").forEach(b=>b.classList.toggle("on",b.dataset.p===p));
+  if(p==="cmp") renderCmp();
+}
+$("nav").onclick=e=>{const b=e.target.closest("button"); if(b) setPage(b.dataset.p);};
+$("catMode").onclick=e=>{const b=e.target.closest("button"); if(b){catMode=b.dataset.m; renderCmp();}};
+$("who").onclick=e=>{
+  const rm=e.target.closest("[data-rm]");
+  if(rm){ e.preventDefault(); if(confirm("Ta bort vännen?")){ delete db.friends[rm.dataset.rm]; picked=null; save(); renderCmp(); } return; }
+  const c=e.target.closest("input[data-k]"); if(!c) return;
+  c.checked?picked.add(c.dataset.k):picked.delete(c.dataset.k); renderCmp();
+};
+// ---- Live-synk via Supabase (se setup.sql) ----
+const SB_URL="", SB_KEY="";   // fylls i en gång, se instruktioner
+const live={}; let pushT=null, pollT=null, syncState="";
+const sbOn=()=>!!(SB_URL&&SB_KEY);
+function sb(fn,body){
+  const h={"Content-Type":"application/json",apikey:SB_KEY};
+  if(SB_KEY.startsWith("eyJ")) h.Authorization="Bearer "+SB_KEY;
+  return fetch(SB_URL+"/rest/v1/rpc/"+fn,{method:"POST",headers:h,body:JSON.stringify(body)}).then(r=>{ if(!r.ok) throw new Error(r.status); return r.text(); }).then(t=>t?JSON.parse(t):null);
+}
+function clean(o){
+  return {name:String(o.name||"Vän").slice(0,40),start:String(o.start||""),payday:String(o.payday||""),bal:Number(o.bal)||0,
+    items:(Array.isArray(o.items)?o.items:[]).slice(0,2000).map(i=>({id:uid(),type:i.type==="inc"?"inc":"exp",cat:String(i.cat||"Övrigt"),sub:String(i.sub||"").slice(0,30),name:String(i.name||""),amount:Number(i.amount)||0,rec:!!i.rec,date:String(i.date||o.start||""),day:Number(i.day)||1}))};
+}
+function myShare(){ const p=db.profiles[db.room.pid]||P(); return {name:p.name,start:p.start,payday:p.payday,bal:p.bal,items:p.items}; }
+function setSync(v){ if(syncState!==v){ syncState=v; if(page==="cmp") renderRoom(); } }
+function schedulePush(){ if(!sbOn()||!db.room) return; clearTimeout(pushT); pushT=setTimeout(push,1200); }
+function push(){ if(!sbOn()||!db.room) return Promise.resolve(); return sb("put_room",{r:db.room.name,m:db.room.member,d:myShare()}).then(()=>setSync("ok")).catch(()=>setSync("err")); }
+function pull(){
+  if(!sbOn()||!db.room||document.hidden) return Promise.resolve();
+  return sb("get_room",{r:db.room.name}).then(rows=>{
+    const seen=new Set();
+    (rows||[]).forEach(row=>{ if(row.member===db.room.member) return; seen.add(row.member); live[row.member]=clean(row.data||{}); });
+    Object.keys(live).forEach(k=>{ if(!seen.has(k)) delete live[k]; });
+    setSync("ok"); if(page==="cmp") renderCmp();
+  }).catch(()=>setSync("err"));
+}
+function startSync(){
+  clearInterval(pollT); if(!sbOn()||!db.room) return;
+  push().then(pull); pollT=setInterval(pull,5000);
+}
+document.addEventListener("visibilitychange",()=>{ if(!document.hidden) pull(); });
+let roomHtml="";
+function renderRoom(){
+  let h;
+  if(!sbOn()) h=`<p class="note" style="margin:0 0 12px">Live-synk är inte påslagen i den här versionen. Du kan fortfarande jämföra med koder nedan.</p>`;
+  else if(!db.room) h=`<label for="roomName">Delat rum – live-jämförelse</label><div class="row2"><input id="roomName" placeholder="Hitta på ett rumsnamn, minst 6 tecken"><button id="roomJoin">Gå med</button></div><p class="note" style="margin:6px 0 14px">Du och din vän skriver in exakt samma rumsnamn, så uppdateras era budgetar hos varandra automatiskt. Alla som kan rumsnamnet kan se datan, så välj något svårgissat.</p>`;
+  else h=`<div class="note" style="margin:0 0 6px"><b>${syncState==="err"?"🔴 Ingen kontakt – försöker igen":"🟢 Live"}</b> i rummet <b>${esc(db.room.name)}</b></div><div class="row2" style="margin-bottom:14px"><select id="roomProf">${Object.entries(db.profiles).map(([id,p])=>`<option value="${id}" ${id===(db.room.pid)?"selected":""}>Delar: ${esc(p.name)}</option>`).join("")}</select><button id="roomLeave">Lämna rum</button></div>`;
+  if(h!==roomHtml){ roomHtml=h; $("room").innerHTML=h; }
+}
+$("room").onclick=async e=>{
+  if(e.target.id==="roomJoin"){
+    const n=$("roomName").value.trim().toLowerCase();
+    if(n.length<6){ alert("Rumsnamnet måste vara minst 6 tecken."); return; }
+    db.room={name:n,member:uid()+uid(),pid:db.cur}; save(); roomHtml=""; renderCmp(); startSync();
+  }
+  if(e.target.id==="roomLeave"){
+    if(!confirm("Lämna rummet? Din delade data tas bort därifrån.")) return;
+    clearInterval(pollT); try{ await sb("leave_room",{r:db.room.name,m:db.room.member}); }catch(err){}
+    Object.keys(live).forEach(k=>delete live[k]); delete db.room; save(); roomHtml=""; renderCmp();
+  }
+};
+$("room").onchange=e=>{ if(e.target.id==="roomProf"){ db.room.pid=e.target.value; save(); roomHtml=""; renderRoom(); } };
+
+const enc=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
+const dec=t=>JSON.parse(decodeURIComponent(escape(atob(t.trim()))));
+$("myCode").onclick=async()=>{
+  const p=P(), code=enc({name:p.name,start:p.start,payday:p.payday,bal:p.bal,items:p.items});
+  try{ await navigator.clipboard.writeText(code); $("myCode").textContent="✓ Kopierad – skicka till din vän"; setTimeout(()=>$("myCode").textContent="📋 Kopiera min kod",2500); }
+  catch(e){ prompt("Kopiera koden:",code); }
+};
+$("addFriend").onclick=()=>{
+  let o; try{ o=dec($("code").value); if(!o||!Array.isArray(o.items)||!o.start||!o.payday) throw 0; }catch(e){ alert("Koden verkar inte stämma. Be din vän kopiera den igen."); return; }
+  const name=prompt("Vad heter din vän?", o.name||"Vän"); if(!name) return;
+  const ex=Object.entries(db.friends).find(([,f])=>f.name===name);
+  const id=ex?ex[0]:uid();
+  db.friends[id]={...clean(o),name};
+  $("code").value=""; picked=null; save(); renderCmp();
+};
+
+$("bkExp").onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:"kvar-till-lon",v:1,db},null,1)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="kvar-till-lon-"+iso(new Date())+".json"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+};
+$("bkImp").onclick=()=>$("bkFile").click();
+$("bkFile").onchange=async e=>{
+  const f=e.target.files[0]; e.target.value=""; if(!f) return;
+  try{
+    const o=JSON.parse(await f.text()), d=o&&o.db;
+    if(!d||typeof d.profiles!=="object"||!Object.keys(d.profiles).length) throw 0;
+    if(!confirm("Ersätta all data i den här webbläsaren med säkerhetskopian?")) return;
+    db=d; if(!db.profiles[db.cur]) db.cur=Object.keys(db.profiles)[0]; db.friends=db.friends||{};
+    Object.values(db.profiles).forEach(p=>{ p.budget=p.budget||{}; p.subs=p.subs||{}; p.items=p.items||[]; });
+    picked=null; save(); resetForm(); render();
+  }catch(err){ alert("Filen går inte att läsa som en säkerhetskopia."); }
+};
+startSync();
+try{ navigator.storage&&navigator.storage.persist&&navigator.storage.persist(); }catch(e){}
+
+renderForm(); resetForm(); render();
+if("serviceWorker" in navigator && location.protocol.startsWith("http")) navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
